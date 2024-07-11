@@ -68,6 +68,26 @@ Parameters:
         InstanceTypeFamily:
           - ecs.u1
           - ecs.e
+    AllowedValues:
+      - ecs.u1-c1m2.xlarge
+      - ecs.u1-c1m4.xlarge
+      - ecs.u1-c1m8.xlarge
+      - ecs.u1-c1m1.2xlarge
+      - ecs.u1-c1m2.2xlarge
+      - ecs.u1-c1m4.2xlarge
+      - ecs.u1-c1m8.2xlarge
+      - ecs.u1-c1m1.3xlarge
+      - ecs.u1-c1m2.3xlarge
+      - ecs.u1-c1m4.3xlarge
+      - ecs.u1-c1m8.3xlarge
+      - ecs.u1-c1m1.4xlarge
+      - ecs.u1-c1m2.4xlarge
+      - ecs.u1-c1m4.4xlarge
+      - ecs.u1-c1m8.4xlarge
+      - ecs.u1-c1m1.8xlarge
+      - ecs.u1-c1m2.8xlarge
+      - ecs.u1-c1m4.8xlarge
+      - ecs.u1-c1m8.8xlarge
   InstancePassword:
     NoEcho: true
     Type: String
@@ -115,7 +135,7 @@ Resources:
       VpcId:
         Ref: VpcId
       SecurityGroupIngress:
-        - PortRange: 8090/8090
+        - PortRange: 80/80
           Priority: 1
           SourceCidrIp: 0.0.0.0/0
           IpProtocol: tcp
@@ -167,13 +187,13 @@ Resources:
           - RegionId:
               Ref: ALIYUN::Region
 Outputs:
-  ServerAddress:
+  dify:
     Description:
-      en: ServerAddress.
-      zh-cn: 访问页面。
+      zh-cn: dify应用入口
+      en: Dify Addresses
     Value:
       Fn::Sub:
-        - 'http://${ServerAddress}:8090'
+        - 'http://${ServerAddress}/install'
         - ServerAddress:
             Fn::Select:
             - 0
