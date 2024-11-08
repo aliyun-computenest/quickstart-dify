@@ -15,4 +15,4 @@ $ mkdocs serve # in root folder
 
 3）本地新建分支后，提交 `Pull request` 到 `main`分支。
 
-4）合并至 `main` 分支后，查看 pages 部署结果。
+4）合并至 `main` 分支后，查看 pages 部署结果。# dify-test
