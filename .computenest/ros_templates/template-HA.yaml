@@ -47,6 +47,22 @@ Parameters:
           Fn::Equals:
             - NewVPC
             - ${VpcOption}
+  PodCidr:
+    Description:
+      zh-cn: 请填写有效的私有网段，即以下网段及其子网：10.0.0.0/8，172.16-31.0.0/12-16，192.168.0.0/16<br>不能与 VPC 及 VPC 内已有 Kubernetes 集群使用的网段重复。<font color='blue'><b>创建成功后不能修改</b></font>
+      en: 'Please fill in a valid private segment, i.e. the following segments and their subnets: 10.0.0.0/8, 172.16-31.0.0/12-16, 192.168.0.0/16<br> which cannot duplicate the network segments already used by clusters in VPC and VPC Kunetberes. <font color=''blue''><b>Cannot be modified after successful creation</b></font>'
+    Label:
+      zh-cn: Pod 网络 CIDR
+      en: Pod Network CIDR
+    Type: String
+    Default: 172.20.0.0/20
+    AssociationProperty: ALIYUN::CS::ManagedKubernetesCluster::PodCidr
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          Fn::Equals:
+            - ${AckNetworkPlugin}
+            - Flannel
   AccessKeySecret:
     Description:
       en: To access AnalyticDB, you are advised to use the AK/SK of the Ram subaccount. The AliyunGPDBFullAccess permission must be configured for the Ram subaccount.
@@ -429,6 +445,15 @@ Parameters:
           Fn::Equals:
             - ExternalCloudDatabase
             - ${ADBOption}
+  AckNetworkPlugin:
+    Label:
+      en: ack plugin network
+      zh-cn: ack网络插件
+    AllowedValues:
+      - Flannel
+      - Terway
+    Type: String
+    Default: Flannel
   ADBOption:
     Label:
       en: Vector database configuration
@@ -586,6 +611,8 @@ Metadata:
           - InstanceType
           - InstancePassword
           - ServiceCidr
+          - AckNetworkPlugin
+          - PodCidr
         Label:
           default:
             en: Kubernetes Configuration
