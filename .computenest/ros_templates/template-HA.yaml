@@ -1,0 +1,646 @@
+ROSTemplateFormatVersion: '2015-09-01'
+Description:
+  zh-cn: 创建托管Kubernetes集群，配置VPC、节点池、HPA及日志服务，实现容器应用的自动伸缩与监控。
+  en: Create a managed Kubernetes cluster, configure Virtual Private Cloud (VPC), node pools, Horizontal Pod Autoscaler (HPA), and logging services to enable automatic scaling and monitoring of containerized applications.
+Locals:
+  Repo:
+    Value:
+      Fn::Sub:
+        - registry-${Region}-vpc.ack.aliyuncs.com/acs
+        - Region:
+            Ref: ALIYUN::Region
+Parameters:
+  RedisInstancePassword:
+    Description:
+      zh-cn: 长度8-30，必须包含大写字母、小写字母、数字、特殊符号三个；<br>特殊字符包括：（）'~！@#$%^&*_-+=|{}[]:;'<>,.?/
+      en: The 8-30 long login password of instance, consists of the uppercase, lowercase letter and number. <br> special characters include（）'~！@#$%^&*_-+=|{}[]:;'<>,.?/.
+    Label:
+      zh-cn: Redis实例密码
+      en: Redis Instance Password
+    ConstraintDescription:
+      en: Length 8-30, must contain three(Capital letters, lowercase letters, numbers, ()!@#%&*-+=Special symbol in)
+      zh-cn: 长度8-30，必须包含三项（大写字母、小写字母、数字、 ()!@#%&*-+=中的特殊符号）
+    NoEcho: true
+    AllowedPattern: '[0-9A-Za-z\_\-\&:;''<>,=%`~!@#\(\)\$\^\*\+\|\{\}\[\]\.\?\/]+$'
+    MaxLength: 30
+    MinLength: 8
+    Type: String
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          Fn::Equals:
+            - ExternalCloudDatabase
+            - ${RedisOption}
+  VpcCidrBlock:
+    Description:
+      zh-cn: VPC的ip地址段范围，<br>您可以使用以下的ip地址段或其子网:<br><font color='green'>[10.0.0.0/8]</font><br><font color='green'>[172.16.0.0/12]</font><br><font color='green'>[192.168.0.0/16]</font>
+      en: 'The ip address range of the VPC in the CidrBlock form; <br>You can use the following ip address ranges and their subnets: <br><font color=''green''>[10.0.0.0/8]</font><br><font color=''green''>[172.16.0.0/12]</font><br><font color=''green''>[192.168.0.0/16]</font>'
+    Label:
+      en: VPC CIDR IPv4 Block
+      zh-cn: 专有网络IPv4网段
+    Type: String
+    Default: 192.168.0.0/16
+    AssociationProperty: ALIYUN::VPC::VPC::CidrBlock
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          Fn::Equals:
+            - NewVPC
+            - ${VpcOption}
+  AccessKeySecret:
+    Description:
+      en: To access AnalyticDB, you are advised to use the AK/SK of the Ram subaccount. The AliyunGPDBFullAccess permission must be configured for the Ram subaccount.
+      zh-cn: 访问AnalyticDB使用,建议使用Ram子账号的AK/SK,Ram子账号需要配置AliyunGPDBFullAccess权限。
+    Label:
+      en: AccessKey Secret
+      zh-cn: AccessKey Secret
+    NoEcho: true
+    AllowedPattern: '[0-9a-zA-Z]+$'
+    Type: String
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          Fn::Equals:
+            - ExternalCloudDatabase
+            - ${ADBOption}
+  ADBPGPassword:
+    Description:
+      en: Server login password, Length 8-30, must contain three(Capital letters, lowercase letters, numbers, ()`~!@#$%^&*_-+=|{}[]:;'<>,.?/ Special symbol in)
+      zh-cn: 数据库访问密码,长度8-30，必须包含三项（大写字母、小写字母、数字、 ()`~!@#$%^&*_-+=|{}[]:;'<>,.?/ 中的特殊符号）
+    Label:
+      en: Instance Password
+      zh-cn: ADBPG 数据库密码
+    ConstraintDescription:
+      en: Length 8-30, must contain three(Capital letters, lowercase letters, numbers, ()!@#%&*-+=Special symbol in)
+      zh-cn: 长度8-30，必须包含三项（大写字母、小写字母、数字、 ()!@#%&*-+=中的特殊符号）
+    NoEcho: true
+    AllowedPattern: '[0-9A-Za-z\_\-\&:;''<>,=%`~!@#\(\)\$\^\*\+\|\{\}\[\]\.\?\/]+$'
+    MaxLength: 30
+    MinLength: 8
+    Type: String
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          Fn::Equals:
+            - ExternalCloudDatabase
+            - ${ADBOption}
+  HPAOption:
+    Description:
+      zh-cn: 启用高可用配置，可以提高应用的容灾和对峰值负载的处理能力<br> <font color='green'>1. Dify的核心业务组件会配置多副本，并打散到不同节点，尽量避免单节点、或单AZ故障造成应用整体服务不可用。<br><font color='green'>2. 为资源消耗密集的组件增加弹性伸缩配置，更好应对峰值负载的压力。</font><br>
+      en: The HA configuration can improve the disaster recovery and peak load processing capability of applications<br> <font color='green'>1. Multiple replicas are configured for the core service components of Dify and distributed to different nodes to prevent the failure of a single node or AZ from making the entire application service unavailable.<br><font color='green'>2. Add elastic scaling to resource-intensive components to better cope with peak load stress.</font><br>
+    Label:
+      en: Whether to enable high availability configuration.
+      zh-cn: 是否启用高可用配置
+    Type: Boolean
+    Default: true
+  InstancePassword:
+    Description:
+      en: Server login password, Length 8-30, must contain three(Capital letters, lowercase letters, numbers, ()`~!@#$%^&*_-+=|{}[]:;'<>,.?/ Special symbol in)
+      zh-cn: 服务器登录密码,长度8-30，必须包含三项（大写字母、小写字母、数字、 ()`~!@#$%^&*_-+=|{}[]:;'<>,.?/ 中的特殊符号）
+    Label:
+      en: Instance Password
+      zh-cn: 实例密码
+    ConstraintDescription:
+      en: Length 8-30, must contain three(Capital letters, lowercase letters, numbers, ()`~!@#$%^&*_-+=|{}[]:;'<>,.?/ Special symbol in)
+      zh-cn: 长度8-30，必须包含三项（大写字母、小写字母、数字、 ()`~!@#$%^&*_-+=|{}[]:;'<>,.?/ 中的特殊符号）
+    NoEcho: true
+    AllowedPattern: '[0-9A-Za-z\_\-\&:;''<>,=%`~!@#\(\)\$\^\*\+\|\{\}\[\]\.\?\/]+$'
+    Type: String
+    AssociationProperty: ALIYUN::ECS::Instance::Password
+  PostgresSQLUserName:
+    Description:
+      en: Primary account name of the database instance.
+      zh-cn: PostgresSQL数据库实例的主账号名称。
+    Label:
+      zh-cn: PostgresSQL数据库账号名称
+      en: PostgresSQL Username
+    ConstraintDescription:
+      en: Consist of 2 to 16 characters of lowercase letters, underline. Must begin with a letter and be end with an alphanumeric character
+      zh-cn: 由 2 到 16 个小写字母组成，下划线。必须以字母开头，以字母数字字符结尾
+    MaxLength: 16
+    MinLength: 2
+    Type: String
+    Default: postgres
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          Fn::Equals:
+            - ExternalCloudDatabase
+            - ${DatabaseOption}
+  AccessKeyID:
+    Description:
+      en: To access AnalyticDB, you are advised to use the AK/SK of the Ram subaccount. The AliyunGPDBFullAccess permission must be configured for the Ram subaccount.
+      zh-cn: 访问AnalyticDB使用,建议使用Ram子账号的AK/SK,Ram子账号需要配置AliyunGPDBFullAccess权限。
+    Label:
+      en: AccessKey ID
+      zh-cn: AccessKey ID
+    NoEcho: true
+    AllowedPattern: '[0-9a-zA-Z]+$'
+    Type: String
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          Fn::Equals:
+            - ExternalCloudDatabase
+            - ${ADBOption}
+  DBInstanceStorage:
+    Description:
+      zh-cn: RDS实例大小范围为20-2000，每5个增量，单位为GB
+      en: The size range of RDS instances is 20 - 2000, Incrementing in every 5, unit GB
+    Label:
+      zh-cn: PostgreSQL实例存储
+      en: Storage
+    ConstraintDescription:
+      zh-cn: RDS实例大小范围为20-2000，每5个增量，单位为GB
+      en: The size range of RDS instances is 20 - 2000, Incrementing in every 5, unit GB
+    MaxValue: 2000
+    MinValue: 20
+    Type: Number
+    Default: 200
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          Fn::Equals:
+            - ExternalCloudDatabase
+            - ${DatabaseOption}
+  PayPeriodUnit:
+    Label:
+      en: Pay Period Unit
+      zh-cn: 购买资源时长周期
+    AllowedValues:
+      - Month
+      - Year
+    Type: String
+    Default: Month
+    AssociationProperty: PayPeriodUnit
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          Fn::Not:
+            Fn::Equals:
+              - ${PayType}
+              - PostPaid
+  ServiceCidr:
+    Description:
+      zh-cn: 可选范围：10.0.0.0/16-24，172.16-31.0.0/16-24，192.168.0.0/16-24<br>不能与 VPC 及 VPC 内已有 Kubernetes 集群使用的网段重复。<font color='blue'><b>创建成功后不能修改</b></font>
+      en: 'Optional range: 10.0.0.0/16-24, 172.16-31.0.0/16-24, 192.168.0.0/16-24<br> cannot duplicate segments already used by existing Kubernetes clusters in VPC and VPC.<font color=''blue''><b>Cannot be modified after successful creation</b></font>'
+    Label:
+      zh-cn: Service CIDR
+      en: Service CIDR
+    Type: String
+    Default: 172.16.0.0/16
+    AssociationProperty: ALIYUN::CS::ManagedKubernetesCluster::ServiceCidr
+  EnableTLSConfig:
+    Description:
+      zh-cn: 开启TLS配置，通过加密技术和协议来确保数据在传输过程中的安全<br> <font color='green'>开启TLS配置需要配置TLS证书和密码。<br><font
+      en: Enable the TLS configuration to ensure data security during transmission using encryption technologies and protocols<br> <font color='green'>To enable the TLS configuration, you need to configure the TLS certificate and password<br><font
+    Label:
+      en: Whether to enable TLS configuration.
+      zh-cn: 是否开启TLS配置
+    Type: Boolean
+    Default: false
+  ADBPGSegmentStorage:
+    Label:
+      en: SegmentStorageSize
+      zh-cn: AnalyticDB Segment存储大小(G)
+    AllowedValues:
+      - 200
+      - 400
+      - 800
+      - 1024
+    Type: Number
+    Default: 200
+    AssociationProperty: ALIYUN::ECS::Instance::StorageSize
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          Fn::Equals:
+            - ExternalCloudDatabase
+            - ${ADBOption}
+  DomainAddress:
+    Description:
+      en: Please enter a valid domain name
+      zh-cn: 请输入有效的域名
+    Label:
+      en: Domain
+      zh-cn: 域名
+    AllowedPattern: ^(?!-)[A-Za-z0-9-]{1,63}(?<!-)(\.[A-Za-z]{2,})+$
+    Type: String
+    Default: dify-example.local
+  ZoneId2:
+    Label:
+      en: Availability Zone
+      zh-cn: 可用区2
+    Type: String
+    AssociationProperty: ALIYUN::ECS::Instance::ZoneId
+    AssociationPropertyMetadata:
+      ExclusiveTo:
+        - ZoneId1
+  InstanceType:
+    Label:
+      en: Instance Type
+      zh-cn: 实例规格
+    Type: CommaDelimitedList
+    AssociationProperty: ALIYUN::ECS::Instance::InstanceType
+    AssociationPropertyMetadata:
+      InstanceChargeType: PostPaid
+      SystemDiskCategory: cloud_essd
+      CreateACKClusterParams:
+        NetworkPlugin: terway-eniip
+  RedisOption:
+    Label:
+      en: Redis Configuration
+      zh-cn: Redis配置
+    AllowedValues:
+      - Integration
+      - ExternalCloudDatabase
+    Type: String
+    Default: Integration
+    AssociationPropertyMetadata:
+      ValueLabelMapping:
+        Integration:
+          zh-cn: 开源Redis组件
+          en: Open source database component.
+        ExternalCloudDatabase:
+          zh-cn: 新建Redis数据库
+          en: New Redis cloud database.
+  DatabaseOption:
+    Label:
+      en: Database configuration
+      zh-cn: 数据库配置
+    AllowedValues:
+      - Integration
+      - ExternalCloudDatabase
+    Type: String
+    Default: Integration
+    AssociationPropertyMetadata:
+      ValueLabelMapping:
+        Integration:
+          zh-cn: 开源数据库组件
+          en: Open source database component.
+        ExternalCloudDatabase:
+          zh-cn: 新建云数据库
+          en: New external cloud database.
+  ZoneId1:
+    Label:
+      en: Availability Zone
+      zh-cn: 可用区1
+    Type: String
+    AssociationProperty: ALIYUN::ECS::Instance::ZoneId
+    AssociationPropertyMetadata:
+      ExclusiveTo:
+        - ZoneId2
+  DBInstanceClass:
+    Description:
+      zh-cn: 根据数据库引擎的类型和可用的区域支持选择实例规格；<br>请参见详细信息：<a href='https://help.aliyun.com/document_detail/26312.html' target='_blank'><b><font color='blue'>实例规格表</font></b></a>
+      en: Select the instance specification based on the type of database engine and the available area support;<br>see detail <a href='https://www.alibabacloud.com/help/doc-detail/26312.html' target='_blank'><b><font color='blue'>Instance specification sheet</font></b></a>
+    Label:
+      zh-cn: PostgreSQL实例规格
+      en: PostgreSQL Instance Class
+    Type: String
+    Default: pg.n4.2c.2m
+    AssociationProperty: ALIYUN::RDS::Instance::InstanceType
+    AssociationPropertyMetadata:
+      Engine: PostgreSQL
+      ZoneId: ${ZoneId1}
+      Visible:
+        Condition:
+          Fn::Equals:
+            - ExternalCloudDatabase
+            - ${DatabaseOption}
+  PayPeriod:
+    Label:
+      en: Period
+      zh-cn: 购买资源时长
+    AllowedValues:
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5
+      - 6
+      - 7
+      - 8
+      - 9
+    Type: Number
+    Default: 1
+    AssociationProperty: PayPeriod
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          Fn::Not:
+            Fn::Equals:
+              - ${PayType}
+              - PostPaid
+  VSwitchId2:
+    Label:
+      en: VSwitch ID
+      zh-cn: 交换机实例ID
+    Type: String
+    Default: ''
+    AssociationProperty: ALIYUN::ECS::VSwitch::VSwitchId
+    AssociationPropertyMetadata:
+      VpcId: VpcId
+      ZoneId: ZoneId2
+      Visible:
+        Condition:
+          Fn::Equals:
+            - ExistingVPC
+            - ${VpcOption}
+  VpcOption:
+    Label:
+      en: Select Existing or New VPC
+      zh-cn: 选择已有/新建的专有网络
+    AllowedValues:
+      - NewVPC
+      - ExistingVPC
+    Type: String
+    Default: NewVPC
+    AssociationPropertyMetadata:
+      ValueLabelMapping:
+        NewVPC:
+          zh-cn: 新建专有网络
+          en: New VPC
+        ExistingVPC:
+          zh-cn: 已有专有网络
+          en: Existing VPC
+  VSwitchId1:
+    Label:
+      en: VSwitch ID
+      zh-cn: 交换机实例ID
+    Type: String
+    Default: ''
+    AssociationProperty: ALIYUN::ECS::VSwitch::VSwitchId
+    AssociationPropertyMetadata:
+      VpcId: VpcId
+      ZoneId: ZoneId1
+      Visible:
+        Condition:
+          Fn::Equals:
+            - ExistingVPC
+            - ${VpcOption}
+  PayType:
+    Label:
+      en: ECS Instance Charge Type
+      zh-cn: 付费类型
+    AllowedValues:
+      - PostPaid
+      - PrePaid
+    Type: String
+    Default: PostPaid
+    AssociationProperty: ChargeType
+    AssociationPropertyMetadata:
+      LocaleKey: InstanceChargeType
+  DBInstanceStorageType:
+    Description:
+      zh-cn: 实例存储类型；<br>请参见详细信息：<a href='https://help.aliyun.com/document_detail/69795.html' target='_blank'><b><font color='blue'>存储类型</font></b></a>
+      en: The storage type of DB instance; see detail <a href='https://www.alibabacloud.com/help/en/apsaradb-for-rds/latest/storage-types' target='_blank'><b><font color=''blue''>Storage types</font></b></a>'
+    Label:
+      zh-cn: PostgreSQL实例存储类型
+      en: Storage Type
+    AllowedValues:
+      - local_ssd
+      - cloud_ssd
+      - cloud_essd
+      - cloud_essd2
+      - cloud_essd3
+    Type: String
+    Default: cloud_essd
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          Fn::Equals:
+            - ExternalCloudDatabase
+            - ${DatabaseOption}
+  ADBPGInstanceSpec:
+    Label:
+      en: AnalyticDB DBInstanceSpec
+      zh-cn: AnalyticDB 实例规格
+    AllowedValues:
+      - 4C16G
+      - 8C32G
+      - 16C64G
+    Type: String
+    Default: 4C16G
+    AssociationProperty: ALIYUN::GPDB::DBInstance:InstanceSpec
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          Fn::Equals:
+            - ExternalCloudDatabase
+            - ${ADBOption}
+  ADBOption:
+    Label:
+      en: Vector database configuration
+      zh-cn: 向量数据库配置
+    AllowedValues:
+      - Integration
+      - ExternalCloudDatabase
+    Type: String
+    Default: Integration
+    AssociationPropertyMetadata:
+      ValueLabelMapping:
+        Integration:
+          zh-cn: 开源Weaviate组件
+          en: Open source database component.
+        ExternalCloudDatabase:
+          zh-cn: 新建AnalyticDB数据库
+          en: New AnalyticDB cloud database.
+  TLSCert:
+    Label:
+      en: TLS Cert.
+      zh-cn: TLS Cert证书
+    NoEcho: true
+    Type: String
+    Default: ''
+    AssociationProperty: FileContent
+    AssociationPropertyMetadata:
+      AcceptFileSuffixes: .crt
+      Visible:
+        Condition:
+          Fn::Equals:
+            - true
+            - ${EnableTLSConfig}
+  VSwitchCidrBlock2:
+    Description:
+      zh-cn: 必须属于VPC的子网段。
+      en: Must belong to the subnet segment of VPC.
+    Label:
+      en: VSwitch CIDR Block
+      zh-cn: 交换机子网网段2
+    Type: String
+    Default: 192.168.1.0/24
+    AssociationProperty: ALIYUN::VPC::VSwitch::CidrBlock
+    AssociationPropertyMetadata:
+      VpcCidrBlock: VpcCidrBlock
+      Visible:
+        Condition:
+          Fn::Equals:
+            - NewVPC
+            - ${VpcOption}
+  VpcId:
+    Label:
+      en: VPC ID
+      zh-cn: 专有网络VPC实例ID
+    Type: String
+    Default: ''
+    AssociationProperty: ALIYUN::ECS::VPC::VPCId
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          Fn::Equals:
+            - ExistingVPC
+            - ${VpcOption}
+  VSwitchCidrBlock1:
+    Description:
+      zh-cn: 必须属于VPC的子网段。
+      en: Must belong to the subnet segment of VPC.
+    Label:
+      en: VSwitch CIDR Block
+      zh-cn: 交换机子网网段1
+    Type: String
+    Default: 192.168.0.0/24
+    AssociationProperty: ALIYUN::VPC::VSwitch::CidrBlock
+    AssociationPropertyMetadata:
+      VpcCidrBlock: VpcCidrBlock
+      Visible:
+        Condition:
+          Fn::Equals:
+            - NewVPC
+            - ${VpcOption}
+  TLSSecret:
+    Label:
+      en: TLS Secret.
+      zh-cn: TLS 密钥
+    NoEcho: true
+    Type: String
+    Default: ''
+    AssociationProperty: FileContent
+    AssociationPropertyMetadata:
+      AcceptFileSuffixes: .key
+      Visible:
+        Condition:
+          Fn::Equals:
+            - true
+            - ${EnableTLSConfig}
+  PostgresSQLPassword:
+    Description:
+      en: Server login password, Length 8-30, must contain three(Capital letters, lowercase letters, numbers, ()`~!@#$%^&*_-+=|{}[]:;'<>,.?/ Special symbol in)
+      zh-cn: 数据库访问密码,长度8-30，必须包含三项（大写字母、小写字母、数字、 ()`~!@#$%^&*_-+=|{}[]:;'<>,.?/ 中的特殊符号）
+    Label:
+      en: Instance Password
+      zh-cn: PostgresSQL数据库密码
+    ConstraintDescription:
+      en: Length 8-30, must contain three(Capital letters, lowercase letters, numbers, ()!@#%&*-+=Special symbol in)
+      zh-cn: 长度8-30，必须包含三项（大写字母、小写字母、数字、 ()!@#%&*-+=中的特殊符号）
+    NoEcho: true
+    AllowedPattern: '[0-9A-Za-z\_\-\&:;''<>,=%`~!@#\(\)\$\^\*\+\|\{\}\[\]\.\?\/]+$'
+    MaxLength: 30
+    MinLength: 8
+    Type: String
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          Fn::Equals:
+            - ExternalCloudDatabase
+            - ${DatabaseOption}
+  ADBPGAccount:
+    Description:
+      en: Primary account name of the database instance.
+      zh-cn: ADBPG 数据库实例的主账号名称。
+    Label:
+      zh-cn: ADBPG数据库账号名称
+      en: ADBPG Account
+    ConstraintDescription:
+      en: Consist of 2 to 16 characters of lowercase letters, underline. Must begin with a letter and be end with an alphanumeric character
+      zh-cn: 由 2 到 16 个小写字母组成，下划线。必须以字母开头，以字母数字字符结尾
+    MaxLength: 16
+    MinLength: 2
+    Type: String
+    Default: dify
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          Fn::Equals:
+            - ExternalCloudDatabase
+            - ${ADBOption}
+Outputs:
+  Dify访问页面:
+    Label: Dify访问页面
+    Value: '******'
+  使用说明:
+    Label: Dify访问说明
+    Value: '******'
+Metadata:
+  ALIYUN::ROS::Interface:
+    ParameterGroups:
+      - Parameters:
+          - PayType
+          - PayPeriodUnit
+          - PayPeriod
+        Label:
+          default:
+            en: PayType Configuration
+            zh-cn: 付费类型配置
+      - Parameters:
+          - InstanceType
+          - InstancePassword
+          - ServiceCidr
+        Label:
+          default:
+            en: Kubernetes Configuration
+            zh-cn: Kubernetes配置
+      - Parameters:
+          - DatabaseOption
+          - DBInstanceClass
+          - DBInstanceStorageType
+          - DBInstanceStorage
+          - PostgresSQLUserName
+          - PostgresSQLPassword
+        Label:
+          default:
+            en: Postgres Database Configuration
+            zh-cn: Postgres 数据库配置
+      - Parameters:
+          - RedisOption
+          - RedisInstancePassword
+        Label:
+          default:
+            en: Redis Database Configuration
+            zh-cn: Redis数据库配置
+      - Parameters:
+          - ADBOption
+          - ADBPGInstanceSpec
+          - ADBPGSegmentStorage
+          - ADBPGAccount
+          - ADBPGPassword
+          - AccessKeyID
+          - AccessKeySecret
+        Label:
+          default:
+            en: Vector Database Configuration
+            zh-cn: 向量数据库配置
+      - Parameters:
+          - VpcOption
+          - ZoneId1
+          - ZoneId2
+          - VpcCidrBlock
+          - VSwitchCidrBlock1
+          - VSwitchCidrBlock2
+          - VpcId
+          - VSwitchId1
+          - VSwitchId2
+        Label:
+          default:
+            zh-cn: 基础配置
+            en: Basic Configuration
+      - Parameters:
+          - DomainAddress
+          - EnableTLSConfig
+          - TLSCert
+          - TLSSecret
+          - HPAOption
+        Label:
+          default:
+            zh-cn: 服务配置
+            en: Service Configuration
