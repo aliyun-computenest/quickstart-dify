@@ -38,15 +38,14 @@ Dify社区版在计算巢部署的费用主要涉及：
 ## 部署架构
 <img src="8.png" width="1500" height="700" align="bottom"/>
 
-Dify应用的组件主要包括业务组件和基础组件两大类，业务组件包括：api/worker、web、sandbox。基础组件包括：db、verctor db、redis、nginx、ssrf_proxy。
+  Dify应用的组件主要包括业务组件和基础组件两大类，业务组件包括：api/worker、web、sandbox。基础组件包括：db、verctor db、redis、nginx、ssrf_proxy。
 此方案中基础组件既可以选择社区开源的redis、postgres以及weaviate，也可以选择阿里云的云数据库，如果您对这些基础组件有更高的性能、功能和SLA要求、或者对基础组件有运维和管理的压力，推荐使用云数据库。
 
 ## 部署流程
-1. 访问计算巢Dify社区版[部署链接](https://computenest.console.aliyun.com/user/cn-hangzhou/serviceInstanceCreate?ServiceId=service-c8afb895dd314f70a020)
-，按提示填写部署参数： 
-- 模板选择"高可用版"，配置Kubernetes, 如果想使用已有的ACK集群，需要选择ACK集群Id,为了提高部署成功率和稳定性，推荐使用新建容器集群，如果选择已有ACK,最后需要手动进行服务访问配置。
+1. 访问计算巢Dify社区版[部署链接](https://computenest.console.aliyun.com/user/cn-hangzhou/serviceInstanceCreate?ServiceId=service-c8afb895dd314f70a020)按提示填写部署参数： 
+ 模板选择"高可用版"，配置Kubernetes, 如果想使用已有的ACK集群，需要选择ACK集群Id,为了提高部署成功率和稳定性，推荐使用新建容器集群，如果选择已有ACK,最后需要手动进行服务访问配置。
     ![image.png](9.png)
-   若选择"新建容器集群"，需要配置节点规格、节点密码等。
+ 若选择"新建容器集群"，需要配置节点规格、节点密码等。
     ![image.png](10.png)
 - 配置Postgres数据库，可以选择开源的Postgres，也可以选择阿里云的云数据库Postgres，如果选择新建云数据库，需要进行相关配置
   ![image.png](11.png)
@@ -64,17 +63,20 @@ Dify应用的组件主要包括业务组件和基础组件两大类，业务组�
     ![image.png](16.png)
 3. 等待部署完成后就可以开始使用服务，进入服务实例详情可查看使用说明和Dify访问页面，若使用域名，需要按照使用说明的提示绑定host或配置解析后使用
     ![image.png](17.png)
-4. 如果选择已有ACK集群进行部署，需要手动配置访问入口, 推荐两种方式
-    **方式一：** 通过负载均衡访问，按照如下步骤进行配置
-    ![img.png](18.png)
-    配置完成后，您会看到ack-dify服务的外部IP地址（External IP），将该外部IP地址输入浏览器地址栏即可访问Dify服务。
-    ![img.png](19.png)
-    **方式二：** 通过配置Ingress访问，按照如下步骤进行配置
-    首先集群中安装Nginx Ingress Controller组件，再配置相关路由，按照如下步骤配置
-    ![img.png](20.png)
-    配置完成后，您会看到Ingress的端点，将此端点对域名绑定host或配置解析后，即可通过域名访问Dify。
-    ![img.png](21.png)
-5. 注册账号。
+4. 注册账号。
     ![image.png](6.png)
-6. 登录就能创建自己的dify应用了
+5. 登录就能创建自己的dify应用了
     ![image.png](7.png)
+## 使用说明
+  如果选择已有ACK集群进行部署，需要手动配置访问入口, 推荐两种方式
+  
+  **方式一：** 通过负载均衡访问，按照如下步骤进行配置
+  ![img.png](18.png)
+  配置完成后，您会看到ack-dify服务的外部IP地址（External IP），将该外部IP地址输入浏览器地址栏即可访问Dify服务。
+  ![img.png](19.png)
+
+  **方式二：** 通过配置Ingress访问，按照如下步骤进行配置
+  首先集群中安装Nginx Ingress Controller组件，再配置相关路由，按照如下步骤配置
+  ![img.png](20.png)
+  配置完成后，您会看到Ingress的端点，将此端点对域名绑定host或配置解析后，即可通过域名访问Dify。
+  ![img.png](21.png)
