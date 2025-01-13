@@ -37,36 +37,243 @@ ImageBuilder:
     Timeout: 10800
     Tags: [ ]
     CommandContent: |-
-      #!/bin/bash
-      yum-config-manager --add-repo http://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
-      yum makecache fast
-      yum install -y git
-      yum -y install docker-ce jq
-      systemctl enable docker
-      systemctl start docker
+        #!/bin/bash
+        # 关闭基础镜像非必要服务，降低基础服务资源占用
+        systemctl stop systemd-resolved.service
+        systemctl disable systemd-resolved.service
+        systemctl stop rpcbind.socket
+        systemctl stop rpcbind.service
+        systemctl disable rpcbind.service
+        systemctl disable rpcbind.socket
+        systemd-analyze blame
 
-      cd /root/
-      git clone https://github.com/langgenius/dify.git
-      cd dify/docker
-      cp .env.example .env
-      docker compose up -d
-      sleep 300
-      docker compose down
+        # 关闭防火墙
+        systemctl disable firewalld
+        systemctl stop firewalld
 
-      cat > /etc/systemd/system/dify.service <<EOF
-      [Unit]
-      Description=Dify Application Service
-      Requires=docker.service
-      After=docker.service
+        # 关闭update-motd 服务
+        systemctl disable update-motd.service
+        systemctl stop update-motd.service
 
-      [Service]
-      Type=oneshot
-      RemainAfterExit=yes
-      WorkingDirectory=/root/dify/docker
-      ExecStart=/usr/bin/docker compose up -d
-      ExecStop=/usr/bin/docker compose down
-      TimeoutStartSec=0
+        systemctl stop systemd-resolved.service
+        systemctl disable systemd-resolved.service
+        systemctl stop rpcbind.socket
+        systemctl stop rpcbind.service
+        systemctl disable rpcbind.service
+        systemctl disable rpcbind.socket
 
-      [Install]
-      WantedBy=multi-user.target
-      EOF
+        # 升级基础组件：
+        dnf upgrade-minimal
+        # 安装基础组件
+        yum check-update
+        yum -y upgrade --security
+        yum -y upgrade-minimal
+
+        # 安装docker-ce
+        yum-config-manager --add-repo http://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
+        yum makecache
+        yum install -y wget curl unzip git jq
+        yum install -y docker-ce
+        systemctl start docker
+
+        # 下载dify
+        cd /root/
+        git clone https://github.com/langgenius/dify.git
+        cd dify/docker
+        cp .env.example .env
+        docker compose up -d
+        sleep 300
+        docker compose down
+
+        cd /root
+
+        cat > /usr/lib/systemd/system/app-init.service << EOF
+        [Unit]
+        Description=Application init serivce
+        Wants=cloud-final.service
+        Requires=network-online.target
+        After=network-online.target cloud-final.service
+
+        [Service]
+        Type=oneshot
+        ExecStart=/usr/local/bin/app-init.sh
+        RemainAfterExit=false
+        KillMode=control-group
+        Restart=no
+        StandardOutput=file:/var/log/app-init.log
+        StandardError=file:/var/log/app-init.log
+
+        [Install]
+        WantedBy=multi-user.target
+        EOF
+
+
+        cat > /usr/local/bin/app-init.sh << EOF
+        #!/bin/bash
+
+        # 初始化应用......
+        echo "$(date +"%Y-%m-%d %H:%M:%S") init applications......"
+
+        if sh /usr/local/bin/startup.sh; then
+          echo "$(date +"%Y-%m-%d %H:%M:%S") init applications successfully"
+        else
+          echo "$(date +"%Y-%m-%d %H:%M:%S") init applications failed"
+        fi
+
+        # 执行成功后服务自毁, 避免再次执行，勿动
+        rm -rf /usr/local/bin/startup.sh
+        rm -- "$0"
+        systemctl disable app-init.service
+        rm -rf /etc/systemd/system/app-init.service /usr/lib/systemd/system/app-init.service
+        systemctl daemon-reload
+        EOF
+
+        cat > /usr/local/bin/startup.sh << 'EOF'
+        #!/bin/bash
+
+        set -e
+
+        cat > /etc/systemd/system/dify.service <<DIFY_EOF
+        [Unit]
+        Description=Dify Application Service
+        Requires=docker.service
+        After=docker.service
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        WorkingDirectory=/root/dify/docker
+        ExecStart=/usr/bin/docker compose up -d
+        ExecStop=/usr/bin/docker compose down
+        TimeoutStartSec=0
+
+        [Install]
+        WantedBy=multi-user.target
+        DIFY_EOF
+
+        sudo systemctl enable --now docker.service
+        sudo systemctl enable --now dify.service
+        EOF
+
+        chmod 0755 /usr/local/bin/startup.sh /usr/local/bin/app-init.sh
+        systemctl enable app-init.service
+        systemctl start app-init.service
+
+        # 安装云监控Agent
+        ARGUS_VERSION=3.5.7 /bin/bash -c "$(curl -sS https://cms-agent-ap-southeast-1.oss-ap-southeast-1-internal.aliyuncs.com/Argus/agent_install_ecs-1.7.sh)" 2>&1
+
+        ###################################################
+        #  1. 清理制作镜像过程中产生的日志，避免敏感信息泄漏。    #
+        #    - 系统日志                                    #
+        #    - 应用日志                                    #
+        #  2. 清理制作镜像过程中命令行历史                    #
+        #  3. 删除所有账户默认密码，删除所有用户目录下的ssh配置  #
+        #  4. 清理缓存                                     #
+        ###################################################
+
+        set -xe
+
+        function clean_log(){
+            rm -fv /usr/local/aegis/aegis_update/data/data.[0-9]
+            rm -fv /usr/local/aegis/aegis_client/aegis_*/data/data.[0-9]
+
+            rm -fv /usr/local/aegis/globalcfg/domaincfg.ini
+            rm -fv /opt/aegis/globalcfg/domaincfg.ini
+
+            rm -rf /var/log/anaconda/*
+            rm -rf /var/log/ecsgo.log*
+            rm -rf /var/log/cron-*
+            rm -rf /var/log/btmp-*
+            rm -rf /var/log/maillog-*
+            rm -rf /var/log/messages-*
+            rm -rf /var/log/secure-*
+            rm -rf /var/log/spooler-*
+            rm -rf /var/log/yum.log-*
+            rm -rf /var/log/boot.log-*
+            rm -rf /var/log/anaconda/*
+            rm -rf /var/log/sa/*
+            rm -rf /var/log/conman*
+            rm -rf /var/log/journal/*
+            rm -rf /var/log/cloud-init.log
+            rm -rf /var/log/cloud-init-output.log
+
+            for i in $(find /var/log/ -type f); do > $i; done
+
+            rm -rfv /var/lib/apt/lists/*
+            rm -rfv /var/lib/yum/history/*
+            rm -rfv /var/lib/dnf/history*
+            rm -rfv /var/lib/dhclient/*
+            rm -rfv /var/lib/dhcp/*
+            rm -rfv /var/lib/aliyun_init/*
+            rm -rfv /var/lib/cloud/*
+
+            if [ -d /usr/local/share/aliyun-assist/*/log/ ];then
+                rm -rfv  /usr/local/share/aliyun-assist/*/log/*
+            fi
+
+            rm -rfv /etc/ssh/sshd_config.d/*
+
+            rm -rf /tmp/*
+            rm -f /root/{.bash_history,.viminfo,*.cfg,*.log*}
+            rm -rf /root/script
+
+            sed -i "/iZ*Z/d" /etc/hosts
+            sed -i "/AliYun/d" /etc/hosts
+            sed -i "/Aliyun/d" /etc/hosts
+            sed -i "/debug/d" /etc/hosts
+
+            # Clean up useless nameservers to prevent cloudinit local domain name resolution timeout
+            sed -i "/nameserver/d" $(realpath /etc/resolv.conf)
+
+            [ -d /etc/NetworkManager/system-connections ] && rm -fv /etc/NetworkManager/system-connections/*.nmconnection
+
+            if [[ ! -L /etc/udev/rules.d/70-persistent-net.rules ]];then
+                rm -rfv /etc/udev/rules.d/70-persistent-net.rules
+            fi
+
+            sync
+            sync
+            sync
+        }
+
+        function clean_source_cache(){
+            if [ `which zypper` ]; then
+                zypper clean; rm -fv /etc/zypp/repos.d/CUSTOM*
+            elif [ `which apt-get` ]; then
+                apt-get -q clean; apt-get -q autoclean; apt-get -q -y autoremove;
+            elif [ `which yum` ]; then
+                yum clean all;
+            elif [ `which dnf` ]; then
+                dnf clean all;
+            elif [ `which pkg` ]; then
+                pkg autoremove
+            fi
+        }
+
+        function reset_sshd_cfg() {
+            sed -i '/PasswordAuthentication/d' /etc/ssh/sshd_config
+            echo 'PasswordAuthentication no' >> /etc/ssh/sshd_config
+            rm -f /etc/ssh/ssh_host_*
+        }
+
+        function clean_user_auth(){
+            passwd -l root
+            sed -i -e 's/root:[^:]*:/root:*:/g' /etc/shadow
+            rm -f /root/.ssh/*
+        }
+
+        function clean_cmd_history(){
+            for user in $(cut -f1 -d: /etc/passwd); do
+                if [ -f /home/$user/.bash_history ]; then
+                    > /home/$user/.bash_history
+                fi
+            done
+            > /root/.bash_history
+        }
+
+        clean_source_cache
+        clean_log
+        reset_sshd_cfg
+        clean_user_auth
+        clean_cmd_history
+        rm -- "$0"
