@@ -9,269 +9,83 @@ Locals:
         - registry-${Region}-vpc.ack.aliyuncs.com/acs
         - Region:
             Ref: ALIYUN::Region
+Conditions:
+  CreateDataBaseConditions:
+    Fn::Equals:
+      - ExternalCloudDatabase
+      - Ref: DatabaseOption
+  CreateRedisConditions:
+    Fn::Equals:
+      - ExternalCloudDatabase
+      - Ref: RedisOption
+  CreateADBConditions:
+    Fn::Equals:
+      - ExternalCloudDatabase
+      - Ref: ADBOption
+  EnableTLSConfigConditions:
+    Fn::Equals:
+      - true
+      - Ref: EnableTLSConfig
+  EnableHPAConditions:
+    Fn::Equals:
+      - true
+      - Ref: HPAOption
+  CreateAck:
+    Fn::Equals:
+      - Ref: AckOptions
+      - NewAck
+  ExistedAck:
+    Fn::Equals:
+      - Ref: AckOptions
+      - ExistCs
 Parameters:
-  RedisInstancePassword:
-    Description:
-      zh-cn: 长度8-30，必须包含大写字母、小写字母、数字、特殊符号三个；<br>特殊字符包括：（）'~！@#$%^&*_-+=|{}[]:;'<>,.?/
-      en: The 8-30 long login password of instance, consists of the uppercase, lowercase letter and number. <br> special characters include（）'~！@#$%^&*_-+=|{}[]:;'<>,.?/.
-    Label:
-      zh-cn: Redis实例密码
-      en: Redis Instance Password
-    ConstraintDescription:
-      en: Length 8-30, must contain three(Capital letters, lowercase letters, numbers, ()!@#%&*-+=Special symbol in)
-      zh-cn: 长度8-30，必须包含三项（大写字母、小写字母、数字、 ()!@#%&*-+=中的特殊符号）
-    NoEcho: true
-    AllowedPattern: '[0-9A-Za-z\_\-\&:;''<>,=%`~!@#\(\)\$\^\*\+\|\{\}\[\]\.\?\/]+$'
-    MaxLength: 30
-    MinLength: 8
-    Type: String
+  AckOptions:
     AssociationPropertyMetadata:
-      Visible:
-        Condition:
-          Fn::Equals:
-            - ExternalCloudDatabase
-            - ${RedisOption}
-  VpcCidrBlock:
+      ValueLabelMapping:
+        ExistCs:
+          zh-cn: 已有容器集群
+          en: New ACK
+        NewAck:
+          zh-cn: 新建容器集群
+          en: Existing ACK
     Description:
-      zh-cn: VPC的ip地址段范围，<br>您可以使用以下的ip地址段或其子网:<br><font color='green'>[10.0.0.0/8]</font><br><font color='green'>[172.16.0.0/12]</font><br><font color='green'>[192.168.0.0/16]</font>
-      en: 'The ip address range of the VPC in the CidrBlock form; <br>You can use the following ip address ranges and their subnets: <br><font color=''green''>[10.0.0.0/8]</font><br><font color=''green''>[172.16.0.0/12]</font><br><font color=''green''>[192.168.0.0/16]</font>'
-    Label:
-      en: VPC CIDR IPv4 Block
-      zh-cn: 专有网络IPv4网段
-    Type: String
-    Default: 192.168.0.0/16
-    AssociationProperty: ALIYUN::VPC::VPC::CidrBlock
-    AssociationPropertyMetadata:
-      Visible:
-        Condition:
-          Fn::Equals:
-            - NewVPC
-            - ${VpcOption}
-  PodCidr:
-    Description:
-      zh-cn: 请填写有效的私有网段，即以下网段及其子网：10.0.0.0/8，172.16-31.0.0/12-16，192.168.0.0/16<br>不能与 VPC 及 VPC 内已有 Kubernetes 集群使用的网段重复。<font color='blue'><b>创建成功后不能修改</b></font>
-      en: 'Please fill in a valid private segment, i.e. the following segments and their subnets: 10.0.0.0/8, 172.16-31.0.0/12-16, 192.168.0.0/16<br> which cannot duplicate the network segments already used by clusters in VPC and VPC Kunetberes. <font color=''blue''><b>Cannot be modified after successful creation</b></font>'
-    Label:
-      zh-cn: Pod 网络 CIDR
-      en: Pod Network CIDR
-    Type: String
-    Default: 172.20.0.0/20
-    AssociationProperty: ALIYUN::CS::ManagedKubernetesCluster::PodCidr
-    AssociationPropertyMetadata:
-      Visible:
-        Condition:
-          Fn::Equals:
-            - ${AckNetworkPlugin}
-            - Flannel
-  AccessKeySecret:
-    Description:
-      en: To access AnalyticDB, you are advised to use the AK/SK of the Ram subaccount. The AliyunGPDBFullAccess permission must be configured for the Ram subaccount.
-      zh-cn: 访问AnalyticDB使用,建议使用Ram子账号的AK/SK,Ram子账号需要配置AliyunGPDBFullAccess权限。
-    Label:
-      en: AccessKey Secret
-      zh-cn: AccessKey Secret
-    NoEcho: true
-    AllowedPattern: '[0-9a-zA-Z]+$'
-    Type: String
-    AssociationPropertyMetadata:
-      Visible:
-        Condition:
-          Fn::Equals:
-            - ExternalCloudDatabase
-            - ${ADBOption}
-  ADBPGPassword:
-    Description:
-      en: Server login password, Length 8-30, must contain three(Capital letters, lowercase letters, numbers, ()`~!@#$%^&*_-+=|{}[]:;'<>,.?/ Special symbol in)
-      zh-cn: 数据库访问密码,长度8-30，必须包含三项（大写字母、小写字母、数字、 ()`~!@#$%^&*_-+=|{}[]:;'<>,.?/ 中的特殊符号）
-    Label:
-      en: Instance Password
-      zh-cn: ADBPG 数据库密码
-    ConstraintDescription:
-      en: Length 8-30, must contain three(Capital letters, lowercase letters, numbers, ()!@#%&*-+=Special symbol in)
-      zh-cn: 长度8-30，必须包含三项（大写字母、小写字母、数字、 ()!@#%&*-+=中的特殊符号）
-    NoEcho: true
-    AllowedPattern: '[0-9A-Za-z\_\-\&:;''<>,=%`~!@#\(\)\$\^\*\+\|\{\}\[\]\.\?\/]+$'
-    MaxLength: 30
-    MinLength: 8
-    Type: String
-    AssociationPropertyMetadata:
-      Visible:
-        Condition:
-          Fn::Equals:
-            - ExternalCloudDatabase
-            - ${ADBOption}
-  HPAOption:
-    Description:
-      zh-cn: 启用高可用配置，可以提高应用的容灾和对峰值负载的处理能力<br> <font color='green'>1. Dify的核心业务组件会配置多副本，并打散到不同节点，尽量避免单节点、或单AZ故障造成应用整体服务不可用。<br><font color='green'>2. 为资源消耗密集的组件增加弹性伸缩配置，更好应对峰值负载的压力。</font><br>
-      en: The HA configuration can improve the disaster recovery and peak load processing capability of applications<br> <font color='green'>1. Multiple replicas are configured for the core service components of Dify and distributed to different nodes to prevent the failure of a single node or AZ from making the entire application service unavailable.<br><font color='green'>2. Add elastic scaling to resource-intensive components to better cope with peak load stress.</font><br>
-    Label:
-      en: Whether to enable high availability configuration.
-      zh-cn: 是否启用高可用配置
-    Type: Boolean
-    Default: true
-  InstancePassword:
-    Description:
-      en: Server login password, Length 8-30, must contain three(Capital letters, lowercase letters, numbers, ()`~!@#$%^&*_-+=|{}[]:;'<>,.?/ Special symbol in)
-      zh-cn: 服务器登录密码,长度8-30，必须包含三项（大写字母、小写字母、数字、 ()`~!@#$%^&*_-+=|{}[]:;'<>,.?/ 中的特殊符号）
-    Label:
-      en: Instance Password
-      zh-cn: 实例密码
-    ConstraintDescription:
-      en: Length 8-30, must contain three(Capital letters, lowercase letters, numbers, ()`~!@#$%^&*_-+=|{}[]:;'<>,.?/ Special symbol in)
-      zh-cn: 长度8-30，必须包含三项（大写字母、小写字母、数字、 ()`~!@#$%^&*_-+=|{}[]:;'<>,.?/ 中的特殊符号）
-    NoEcho: true
-    AllowedPattern: '[0-9A-Za-z\_\-\&:;''<>,=%`~!@#\(\)\$\^\*\+\|\{\}\[\]\.\?\/]+$'
-    Type: String
-    AssociationProperty: ALIYUN::ECS::Instance::Password
-  PostgresSQLUserName:
-    Description:
-      en: Primary account name of the database instance.
-      zh-cn: PostgresSQL数据库实例的主账号名称。
-    Label:
-      zh-cn: PostgresSQL数据库账号名称
-      en: PostgresSQL Username
-    ConstraintDescription:
-      en: Consist of 2 to 16 characters of lowercase letters, underline. Must begin with a letter and be end with an alphanumeric character
-      zh-cn: 由 2 到 16 个小写字母组成，下划线。必须以字母开头，以字母数字字符结尾
-    MaxLength: 16
-    MinLength: 2
-    Type: String
-    Default: postgres
-    AssociationPropertyMetadata:
-      Visible:
-        Condition:
-          Fn::Equals:
-            - ExternalCloudDatabase
-            - ${DatabaseOption}
-  AccessKeyID:
-    Description:
-      en: To access AnalyticDB, you are advised to use the AK/SK of the Ram subaccount. The AliyunGPDBFullAccess permission must be configured for the Ram subaccount.
-      zh-cn: 访问AnalyticDB使用,建议使用Ram子账号的AK/SK,Ram子账号需要配置AliyunGPDBFullAccess权限。
-    Label:
-      en: AccessKey ID
-      zh-cn: AccessKey ID
-    NoEcho: true
-    AllowedPattern: '[0-9a-zA-Z]+$'
-    Type: String
-    AssociationPropertyMetadata:
-      Visible:
-        Condition:
-          Fn::Equals:
-            - ExternalCloudDatabase
-            - ${ADBOption}
-  DBInstanceStorage:
-    Description:
-      zh-cn: RDS实例大小范围为20-2000，每5个增量，单位为GB
-      en: The size range of RDS instances is 20 - 2000, Incrementing in every 5, unit GB
-    Label:
-      zh-cn: PostgreSQL实例存储
-      en: Storage
-    ConstraintDescription:
-      zh-cn: RDS实例大小范围为20-2000，每5个增量，单位为GB
-      en: The size range of RDS instances is 20 - 2000, Incrementing in every 5, unit GB
-    MaxValue: 2000
-    MinValue: 20
-    Type: Number
-    Default: 200
-    AssociationPropertyMetadata:
-      Visible:
-        Condition:
-          Fn::Equals:
-            - ExternalCloudDatabase
-            - ${DatabaseOption}
-  PayPeriodUnit:
-    Label:
-      en: Pay Period Unit
-      zh-cn: 购买资源时长周期
-    AllowedValues:
-      - Month
-      - Year
-    Type: String
-    Default: Month
-    AssociationProperty: PayPeriodUnit
-    AssociationPropertyMetadata:
-      Visible:
-        Condition:
-          Fn::Not:
-            Fn::Equals:
-              - ${PayType}
-              - PostPaid
-  ServiceCidr:
-    Description:
-      zh-cn: 可选范围：10.0.0.0/16-24，172.16-31.0.0/16-24，192.168.0.0/16-24<br>不能与 VPC 及 VPC 内已有 Kubernetes 集群使用的网段重复。<font color='blue'><b>创建成功后不能修改</b></font>
-      en: 'Optional range: 10.0.0.0/16-24, 172.16-31.0.0/16-24, 192.168.0.0/16-24<br> cannot duplicate segments already used by existing Kubernetes clusters in VPC and VPC.<font color=''blue''><b>Cannot be modified after successful creation</b></font>'
-    Label:
-      zh-cn: Service CIDR
-      en: Service CIDR
-    Type: String
-    Default: 172.16.0.0/16
-    AssociationProperty: ALIYUN::CS::ManagedKubernetesCluster::ServiceCidr
-  EnableTLSConfig:
-    Description:
-      zh-cn: 开启TLS配置，通过加密技术和协议来确保数据在传输过程中的安全<br> <font color='green'>开启TLS配置需要配置TLS证书和密码。<br><font
+      zh-cn: 选择已有容器集群时，避免给您的其他服务造成影响，<font color='green'>部署完成后需自行配置服务访问。<br><font
       en: Enable the TLS configuration to ensure data security during transmission using encryption technologies and protocols<br> <font color='green'>To enable the TLS configuration, you need to configure the TLS certificate and password<br><font
-    Label:
-      en: Whether to enable TLS configuration.
-      zh-cn: 是否开启TLS配置
-    Type: Boolean
-    Default: false
-  ADBPGSegmentStorage:
-    Label:
-      en: SegmentStorageSize
-      zh-cn: AnalyticDB Segment存储大小(G)
+    Default: ExistCs
+    Required: true
     AllowedValues:
-      - 200
-      - 400
-      - 800
-      - 1024
-    Type: Number
-    Default: 200
-    AssociationProperty: ALIYUN::ECS::Instance::StorageSize
+      - ExistCs
+      - NewAck
+    Label: 选择已有/新建的容器集群
+    Type: String
+  VpcOption:
+    Type: String
+    AllowedValues:
+      - NewVPC
+      - ExistingVPC
     AssociationPropertyMetadata:
+      ValueLabelMapping:
+        NewVPC:
+          zh-cn: 新建专有网络
+          en: New VPC
+        ExistingVPC:
+          zh-cn: 已有专有网络
+          en: Existing VPC
       Visible:
         Condition:
           Fn::Equals:
-            - ExternalCloudDatabase
-            - ${ADBOption}
-  DomainAddress:
-    Description:
-      en: Please enter a valid domain name
-      zh-cn: 请输入有效的域名
+            - ${AckOptions}
+            - NewAck
     Label:
-      en: Domain
-      zh-cn: 域名
-    AllowedPattern: ^(?!-)[A-Za-z0-9-]{1,63}(?<!-)(\.[A-Za-z]{2,})+$
-    Type: String
-    Default: dify-example.local
-  ZoneId2:
-    Label:
-      en: Availability Zone
-      zh-cn: 可用区2
-    Type: String
-    AssociationProperty: ALIYUN::ECS::Instance::ZoneId
-    AssociationPropertyMetadata:
-      ExclusiveTo:
-        - ZoneId1
-  InstanceType:
-    Label:
-      en: Instance Type
-      zh-cn: 实例规格
-    Type: CommaDelimitedList
-    AssociationProperty: ALIYUN::ECS::Instance::InstanceType
-    AssociationPropertyMetadata:
-      InstanceChargeType: PostPaid
-      SystemDiskCategory: cloud_essd
-      CreateACKClusterParams:
-        NetworkPlugin: terway-eniip
+      en: Select Existing or New VPC
+      zh-cn: 选择已有/新建的专有网络
+    Required: true
+    Default: NewVPC
   RedisOption:
-    Label:
-      en: Redis Configuration
-      zh-cn: Redis配置
+    Type: String
     AllowedValues:
       - Integration
       - ExternalCloudDatabase
-    Type: String
-    Default: Integration
     AssociationPropertyMetadata:
       ValueLabelMapping:
         Integration:
@@ -280,15 +94,16 @@ Parameters:
         ExternalCloudDatabase:
           zh-cn: 新建Redis数据库
           en: New Redis cloud database.
-  DatabaseOption:
     Label:
-      en: Database configuration
-      zh-cn: 数据库配置
+      en: Redis Configuration
+      zh-cn: Redis配置
+    Required: true
+    Default: Integration
+  DatabaseOption:
+    Type: String
     AllowedValues:
       - Integration
       - ExternalCloudDatabase
-    Type: String
-    Default: Integration
     AssociationPropertyMetadata:
       ValueLabelMapping:
         Integration:
@@ -297,37 +112,215 @@ Parameters:
         ExternalCloudDatabase:
           zh-cn: 新建云数据库
           en: New external cloud database.
-  ZoneId1:
     Label:
-      en: Availability Zone
-      zh-cn: 可用区1
+      en: Database configuration
+      zh-cn: 数据库配置
+    Required: true
+    Default: Integration
+  ADBOption:
     Type: String
-    AssociationProperty: ALIYUN::ECS::Instance::ZoneId
+    AllowedValues:
+      - Integration
+      - ExternalCloudDatabase
     AssociationPropertyMetadata:
-      ExclusiveTo:
-        - ZoneId2
-  DBInstanceClass:
+      ValueLabelMapping:
+        Integration:
+          zh-cn: 开源Weaviate组件
+          en: Open source database component.
+        ExternalCloudDatabase:
+          zh-cn: 新建AnalyticDB数据库
+          en: New AnalyticDB cloud database.
+    Label:
+      en: Vector database configuration
+      zh-cn: 向量数据库配置
+    Required: true
+    Default: Integration
+  HPAOption:
+    Type: Boolean
+    Label:
+      en: Whether to enable high availability configuration.
+      zh-cn: 是否启用高可用配置
     Description:
-      zh-cn: 根据数据库引擎的类型和可用的区域支持选择实例规格；<br>请参见详细信息：<a href='https://help.aliyun.com/document_detail/26312.html' target='_blank'><b><font color='blue'>实例规格表</font></b></a>
-      en: Select the instance specification based on the type of database engine and the available area support;<br>see detail <a href='https://www.alibabacloud.com/help/doc-detail/26312.html' target='_blank'><b><font color='blue'>Instance specification sheet</font></b></a>
+      zh-cn: 启用高可用配置，可以提高应用的容灾和对峰值负载的处理能力<br> <font color='green'>1. Dify的核心业务组件会配置多副本，并打散到不同节点，尽量避免单节点、或单AZ故障造成应用整体服务不可用。<br><font color='green'>2. 为资源消耗密集的组件增加弹性伸缩配置，更好应对峰值负载的压力。</font><br>
+      en: The HA configuration can improve the disaster recovery and peak load processing capability of applications<br> <font color='green'>1. Multiple replicas are configured for the core service components of Dify and distributed to different nodes to prevent the failure of a single node or AZ from making the entire application service unavailable.<br><font color='green'>2. Add elastic scaling to resource-intensive components to better cope with peak load stress.</font><br>
+    Default: true
+  AutoScalingOption:
+    Type: Boolean
     Label:
-      zh-cn: PostgreSQL实例规格
-      en: PostgreSQL Instance Class
-    Type: String
-    Default: pg.n4.2c.2m
-    AssociationProperty: ALIYUN::RDS::Instance::InstanceType
+      en: Whether to enable automatic elastic scaling of a node pool.
+      zh-cn: 节点池是否启用自动弹性伸缩
+    Description:
+      zh-cn: 节点池若开启自动弹性伸缩，付费方式只能选择按量付费
+      en: If automatic elastic expansion is enabled for a node pool, the payment mode can only be Postpaid
+    Default: false
     AssociationPropertyMetadata:
-      Engine: PostgreSQL
-      ZoneId: ${ZoneId1}
       Visible:
         Condition:
           Fn::Equals:
-            - ExternalCloudDatabase
-            - ${DatabaseOption}
+            - ${AckOptions}
+            - NewAck
+  AckNetworkPlugin:
+    Type: String
+    Label:
+      en: ACK plugin network
+      zh-cn: ACK 网络插件
+    AllowedValues:
+      - terway
+      - flannel
+    Default: terway
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          Fn::Equals:
+            - ${AckOptions}
+            - NewAck
+  DomainAddress:
+    Type: String
+    Label:
+      en: Domain
+      zh-cn: 域名
+    Default: dify-example.local
+    Description:
+      en: Please enter a valid domain name
+      zh-cn: 请输入有效的域名
+    AllowedPattern: ^(?!-)[A-Za-z0-9-]{1,63}(?<!-)(\.[A-Za-z]{2,})+$
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          Fn::Equals:
+            - ${AckOptions}
+            - NewAck
+  EnableTLSConfig:
+    Type: Boolean
+    Label:
+      en: Whether to enable TLS configuration.
+      zh-cn: 是否开启TLS配置
+    Description:
+      zh-cn: 开启TLS配置，通过加密技术和协议来确保数据在传输过程中的安全<br> <font color='green'>开启TLS配置需要配置TLS证书和密码。<br><font
+      en: Enable the TLS configuration to ensure data security during transmission using encryption technologies and protocols<br> <font color='green'>To enable the TLS configuration, you need to configure the TLS certificate and password<br><font
+    Default: false
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          Fn::Equals:
+            - ${AckOptions}
+            - NewAck
+  TLSCert:
+    Type: String
+    Default: ''
+    Label:
+      en: TLS Cert.
+      zh-cn: TLS Cert证书
+    NoEcho: true
+    Required:
+      Fn::Equals:
+        - true
+        - ${EnableTLSConfig}
+    AssociationProperty: FileContent
+    AssociationPropertyMetadata:
+      AcceptFileSuffixes: .crt
+      Visible:
+        Condition:
+          Fn::Equals:
+            - true
+            - ${EnableTLSConfig}
+  TLSSecret:
+    Type: String
+    Default: ''
+    Label:
+      en: TLS Secret.
+      zh-cn: TLS 密钥
+    NoEcho: true
+    Required:
+      Fn::Equals:
+        - true
+        - ${EnableTLSConfig}
+    AssociationProperty: FileContent
+    AssociationPropertyMetadata:
+      AcceptFileSuffixes: .key
+      Visible:
+        Condition:
+          Fn::Equals:
+            - true
+            - ${EnableTLSConfig}
+  PayType:
+    Type: String
+    Label:
+      en: ECS Instance Charge Type
+      zh-cn: 付费类型
+    Default: PostPaid
+    AllowedValues:
+      - PostPaid
+      - PrePaid
+    AssociationProperty: ChargeType
+    AssociationPropertyMetadata:
+      LocaleKey: InstanceChargeType
+      AllowedValues:
+        - Condition:
+            Fn::Equals:
+              - ${AutoScalingOption}
+              - false
+          Value:
+            - PostPaid
+            - PrePaid
+        - Condition:
+            Fn::Equals:
+              - ${AutoScalingOption}
+              - true
+          Value:
+            - PostPaid
+      Visible:
+        Condition:
+          Fn::Or:
+            - Fn::Equals:
+                - ${AckOptions}
+                - NewAck
+            - Fn::Equals:
+                - ${RedisOption}
+                - ExternalCloudDatabase
+            - Fn::Equals:
+                - ${DatabaseOption}
+                - ExternalCloudDatabase
+            - Fn::Equals:
+                - ${ADBOption}
+                - ExternalCloudDatabase
+  PayPeriodUnit:
+    Type: String
+    Label:
+      en: Pay Period Unit
+      zh-cn: 购买资源时长周期
+    Default: Month
+    AllowedValues:
+      - Month
+      - Year
+    AssociationProperty: PayPeriodUnit
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          Fn::And:
+            - Fn::Or:
+                - Fn::Equals:
+                    - ${AckOptions}
+                    - NewAck
+                - Fn::Equals:
+                    - ${RedisOption}
+                    - ExternalCloudDatabase
+                - Fn::Equals:
+                    - ${DatabaseOption}
+                    - ExternalCloudDatabase
+                - Fn::Equals:
+                    - ${ADBOption}
+                    - ExternalCloudDatabase
+            - Fn::Not:
+                Fn::Equals:
+                  - ${PayType}
+                  - PostPaid
   PayPeriod:
+    Type: Number
     Label:
       en: Period
       zh-cn: 购买资源时长
+    Default: 1
     AllowedValues:
       - 1
       - 2
@@ -338,55 +331,180 @@ Parameters:
       - 7
       - 8
       - 9
-    Type: Number
-    Default: 1
     AssociationProperty: PayPeriod
     AssociationPropertyMetadata:
       Visible:
         Condition:
-          Fn::Not:
-            Fn::Equals:
-              - ${PayType}
-              - PostPaid
-  VSwitchId2:
-    Label:
-      en: VSwitch ID
-      zh-cn: 交换机实例ID
+          Fn::And:
+            - Fn::Or:
+                - Fn::Equals:
+                    - ${AckOptions}
+                    - NewAck
+                - Fn::Equals:
+                    - ${RedisOption}
+                    - ExternalCloudDatabase
+                - Fn::Equals:
+                    - ${DatabaseOption}
+                    - ExternalCloudDatabase
+                - Fn::Equals:
+                    - ${ADBOption}
+                    - ExternalCloudDatabase
+            - Fn::Not:
+                Fn::Equals:
+                  - ${PayType}
+                  - PostPaid
+  VpcCidrBlock:
     Type: String
-    Default: ''
-    AssociationProperty: ALIYUN::ECS::VSwitch::VSwitchId
+    Label:
+      en: VPC CIDR IPv4 Block
+      zh-cn: 专有网络IPv4网段
+    Description:
+      zh-cn: VPC的ip地址段范围，<br>您可以使用以下的ip地址段或其子网:<br><font color='green'>[10.0.0.0/8]</font><br><font color='green'>[172.16.0.0/12]</font><br><font color='green'>[192.168.0.0/16]</font>
+      en: 'The ip address range of the VPC in the CidrBlock form; <br>You can use the following ip address ranges and their subnets: <br><font color=''green''>[10.0.0.0/8]</font><br><font color=''green''>[172.16.0.0/12]</font><br><font color=''green''>[192.168.0.0/16]</font>'
+    Default: 192.168.0.0/16
+    Required:
+      Fn::Equals:
+        - NewVPC
+        - ${VpcOption}
+    AssociationProperty: ALIYUN::VPC::VPC::CidrBlock
     AssociationPropertyMetadata:
-      VpcId: VpcId
-      ZoneId: ZoneId2
+      Visible:
+        Condition:
+          Fn::Equals:
+            - NewVPC
+            - ${VpcOption}
+  VSwitchCidrBlock1:
+    Type: String
+    Label:
+      en: VSwitch CIDR Block
+      zh-cn: 交换机子网网段1
+    Description:
+      zh-cn: 必须属于VPC的子网段。
+      en: Must belong to the subnet segment of VPC.
+    Default: 192.168.0.0/24
+    Required:
+      Fn::Equals:
+        - NewVPC
+        - ${VpcOption}
+    AssociationProperty: ALIYUN::VPC::VSwitch::CidrBlock
+    AssociationPropertyMetadata:
+      VpcCidrBlock: VpcCidrBlock
+      Visible:
+        Condition:
+          Fn::Equals:
+            - NewVPC
+            - ${VpcOption}
+  VSwitchCidrBlock2:
+    Type: String
+    Label:
+      en: VSwitch CIDR Block
+      zh-cn: 交换机子网网段2
+    Description:
+      zh-cn: 必须属于VPC的子网段。
+      en: Must belong to the subnet segment of VPC.
+    Default: 192.168.1.0/24
+    Required:
+      Fn::Equals:
+        - NewVPC
+        - ${VpcOption}
+    AssociationProperty: ALIYUN::VPC::VSwitch::CidrBlock
+    AssociationPropertyMetadata:
+      VpcCidrBlock: VpcCidrBlock
+      Visible:
+        Condition:
+          Fn::Equals:
+            - NewVPC
+            - ${VpcOption}
+  PodCidr:
+    Type: String
+    Description:
+      zh-cn: 请填写有效的私有网段，即以下网段及其子网：10.0.0.0/8，172.16-31.0.0/12-16，192.168.0.0/16<br>不能与 VPC 及 VPC 内已有 Kubernetes 集群使用的网段重复。<font color='blue'><b>创建成功后不能修改</b></font>
+      en: 'Please fill in a valid private segment, i.e. the following segments and their subnets: 10.0.0.0/8, 172.16-31.0.0/12-16, 192.168.0.0/16<br> which cannot duplicate the network segments already used by clusters in VPC and VPC Kunetberes. <font color=''blue''><b>Cannot be modified after successful creation</b></font>'
+    Label:
+      zh-cn: Pod 网络 CIDR
+      en: Pod Network CIDR
+    AssociationProperty: ALIYUN::CS::ManagedKubernetesCluster::PodCidr
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          Fn::Equals:
+            - ${AckNetworkPlugin}
+            - flannel
+    Default: 172.20.0.0/20
+  ServiceCidr:
+    Type: String
+    Description:
+      zh-cn: 可选范围：10.0.0.0/16-24，172.16-31.0.0/16-24，192.168.0.0/16-24<br>不能与 VPC 及 VPC 内已有 Kubernetes 集群使用的网段重复。<font color='blue'><b>创建成功后不能修改</b></font>
+      en: 'Optional range: 10.0.0.0/16-24, 172.16-31.0.0/16-24, 192.168.0.0/16-24<br> cannot duplicate segments already used by existing Kubernetes clusters in VPC and VPC.<font color=''blue''><b>Cannot be modified after successful creation</b></font>'
+    Label:
+      zh-cn: Service CIDR
+      en: Service CIDR
+    AssociationProperty: ALIYUN::CS::ManagedKubernetesCluster::ServiceCidr
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          Fn::Equals:
+            - ${AckOptions}
+            - NewAck
+    Default: 172.16.0.0/16
+  ZoneId1:
+    Type: String
+    AssociationProperty: ALIYUN::ECS::Instance::ZoneId
+    AssociationPropertyMetadata:
+      ExclusiveTo:
+        - ZoneId2
+      Visible:
+        Condition:
+          Fn::Equals:
+            - ${AckOptions}
+            - NewAck
+    Label:
+      en: Availability Zone
+      zh-cn: 可用区1
+    Default: ''
+  ZoneId2:
+    Type: String
+    AssociationProperty: ALIYUN::ECS::Instance::ZoneId
+    AssociationPropertyMetadata:
+      ExclusiveTo:
+        - ZoneId1
+      Visible:
+        Condition:
+          Fn::Equals:
+            - ${AckOptions}
+            - NewAck
+    Label:
+      en: Availability Zone
+      zh-cn: 可用区2
+    Default: ''
+  VpcId:
+    Type: String
+    Label:
+      en: VPC ID
+      zh-cn: 专有网络VPC实例ID
+    AssociationProperty: ALIYUN::ECS::VPC::VPCId
+    Required:
+      Fn::Equals:
+        - ExistingVPC
+        - ${VpcOption}
+    Default: ''
+    AssociationPropertyMetadata:
       Visible:
         Condition:
           Fn::Equals:
             - ExistingVPC
             - ${VpcOption}
-  VpcOption:
-    Label:
-      en: Select Existing or New VPC
-      zh-cn: 选择已有/新建的专有网络
-    AllowedValues:
-      - NewVPC
-      - ExistingVPC
-    Type: String
-    Default: NewVPC
-    AssociationPropertyMetadata:
-      ValueLabelMapping:
-        NewVPC:
-          zh-cn: 新建专有网络
-          en: New VPC
-        ExistingVPC:
-          zh-cn: 已有专有网络
-          en: Existing VPC
   VSwitchId1:
+    Type: String
     Label:
       en: VSwitch ID
       zh-cn: 交换机实例ID
-    Type: String
     Default: ''
     AssociationProperty: ALIYUN::ECS::VSwitch::VSwitchId
+    Required:
+      Fn::Equals:
+        - ExistingVPC
+        - ${VpcOption}
     AssociationPropertyMetadata:
       VpcId: VpcId
       ZoneId: ZoneId1
@@ -395,32 +513,249 @@ Parameters:
           Fn::Equals:
             - ExistingVPC
             - ${VpcOption}
-  PayType:
-    Label:
-      en: ECS Instance Charge Type
-      zh-cn: 付费类型
-    AllowedValues:
-      - PostPaid
-      - PrePaid
+  VSwitchId2:
     Type: String
-    Default: PostPaid
-    AssociationProperty: ChargeType
+    Label:
+      en: VSwitch ID
+      zh-cn: 交换机实例ID
+    Default: ''
+    AssociationProperty: ALIYUN::ECS::VSwitch::VSwitchId
+    Required:
+      Fn::Equals:
+        - ExistingVPC
+        - ${VpcOption}
     AssociationPropertyMetadata:
-      LocaleKey: InstanceChargeType
-  DBInstanceStorageType:
+      VpcId: VpcId
+      ZoneId: ZoneId2
+      Visible:
+        Condition:
+          Fn::Equals:
+            - ExistingVPC
+            - ${VpcOption}
+  ClusterId:
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          Fn::Equals:
+            - ${AckOptions}
+            - ExistCs
+      RegionId: ${RegionId}
+    Description: 部署应用程序的ACK集群ID
+    Default: Null
+    Required: true
+    Label: ACK 集群ID
+    AllowedPattern: '[0-9a-z]+$'
+    AssociationProperty: ALIYUN::CS::Cluster::ClusterId
+    Type: String
+  InstanceType:
+    Type: CommaDelimitedList
+    Default: ''
+    AssociationProperty: ALIYUN::ECS::Instance::InstanceType
+    AssociationPropertyMetadata:
+      CreateACKClusterParams:
+        NetworkPlugin: terway-eniip
+      Visible:
+        Condition:
+          Fn::Equals:
+            - ${AckOptions}
+            - NewAck
+    Label:
+      en: Worker Instance Type
+      zh-cn: Worker 节点实例规格
+  WorkerSystemDiskSize:
+    Default: 120
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          Fn::Equals:
+            - ${AckOptions}
+            - NewAck
+    Label: Worker节点系统盘大小(GB)
+    Type: Number
+    MinValue: 1
+  WorkerSystemDiskCategory:
+    Type: String
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          Fn::Equals:
+            - ${AckOptions}
+            - NewAck
+      LocaleKey: DiskCategory
+      InstanceType: ${InstanceType}
+    Default: cloud_essd
+    AllowedValues:
+      - cloud_efficiency
+      - cloud_ssd
+      - cloud_essd
+  InstancePassword:
+    Default: Null
+    NoEcho: true
+    Type: String
     Description:
-      zh-cn: 实例存储类型；<br>请参见详细信息：<a href='https://help.aliyun.com/document_detail/69795.html' target='_blank'><b><font color='blue'>存储类型</font></b></a>
-      en: The storage type of DB instance; see detail <a href='https://www.alibabacloud.com/help/en/apsaradb-for-rds/latest/storage-types' target='_blank'><b><font color=''blue''>Storage types</font></b></a>'
+      en: Server login password, Length 8-30, must contain three(Capital letters, lowercase letters, numbers, ()`~!@#$%^&*_-+=|{}[]:;'<>,.?/ Special symbol in)
+      zh-cn: 服务器登录密码,长度8-30，必须包含三项（大写字母、小写字母、数字、 ()`~!@#$%^&*_-+=|{}[]:;'<>,.?/ 中的特殊符号）
+    Label:
+      en: Instance Password
+      zh-cn: 实例密码
+    AllowedPattern: '[0-9A-Za-z\_\-\&:;''<>,=%`~!@#\(\)\$\^\*\+\|\{\}\[\]\.\?\/]+$'
+    ConstraintDescription:
+      en: Length 8-30, must contain three(Capital letters, lowercase letters, numbers, ()`~!@#$%^&*_-+=|{}[]:;'<>,.?/ Special symbol in)
+      zh-cn: 长度8-30，必须包含三项（大写字母、小写字母、数字、 ()`~!@#$%^&*_-+=|{}[]:;'<>,.?/ 中的特殊符号）
+    AssociationProperty: ALIYUN::ECS::Instance::Password
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          Fn::Equals:
+            - ${AckOptions}
+            - NewAck
+  WorkerInstanceCount:
+    Default: 3
+    Type: Number
+    Label:
+      zh-cn: 实例节点数
+      en: The count for cpu instance.
+    MinValue: 1
+    MaxValue: 5000
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          Fn::And:
+            - Fn::Equals:
+                - ${AckOptions}
+                - NewAck
+            - Fn::Equals:
+                - ${AutoScalingOption}
+                - false
+  WorkerInstanceMinCount:
+    Default: 3
+    Type: Number
+    Label:
+      zh-cn: 最小实例节点数
+      en: The min count for cpu instance.
+    MinValue: 1
+    MaxValue: 5000
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          Fn::And:
+            - Fn::Equals:
+                - ${AckOptions}
+                - NewAck
+            - Fn::Equals:
+                - ${AutoScalingOption}
+                - true
+  WorkerInstanceMaxCount:
+    Default: 10
+    Type: Number
+    Label:
+      zh-cn: 最大实例节点数
+      en: The max count for cpu instance.
+    Description:
+      en: If you want to enable automatic elastic scaling, the number of nodes must be greater than the minimum.
+      zh-cn: 若需要启用自动弹性伸缩，需要大于最小节点数。
+    MinValue: 1
+    MaxValue: 5000
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          Fn::And:
+            - Fn::Equals:
+                - ${AckOptions}
+                - NewAck
+            - Fn::Equals:
+                - ${AutoScalingOption}
+                - true
+  RedisInstancePassword:
+    Default: Null
+    Type: String
+    Description:
+      zh-cn: 长度8-30，必须包含大写字母、小写字母、数字、特殊符号三个；<br>特殊字符包括：（）'~！@#$%^&*_-+=|{}[]:;'<>,.?/
+      en: The 8-30 long login password of instance, consists of the uppercase, lowercase letter and number. <br> special characters include（）'~！@#$%^&*_-+=|{}[]:;'<>,.?/.
+    Label:
+      zh-cn: Redis实例密码
+      en: Redis Instance Password
+    NoEcho: true
+    Required:
+      Fn::Equals:
+        - ExternalCloudDatabase
+        - ${RedisOption}
+    ConstraintDescription:
+      en: Length 8-30, must contain three(Capital letters, lowercase letters, numbers, ()!@#%&*-+=Special symbol in)
+      zh-cn: 长度8-30，必须包含三项（大写字母、小写字母、数字、 ()!@#%&*-+=中的特殊符号）
+    AllowedPattern: '[0-9A-Za-z\_\-\&:;''<>,=%`~!@#\(\)\$\^\*\+\|\{\}\[\]\.\?\/]+$'
+    MinLength: 8
+    MaxLength: 30
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          Fn::Equals:
+            - ExternalCloudDatabase
+            - ${RedisOption}
+  DBInstanceClass:
+    Type: String
+    Label:
+      zh-cn: PostgreSQL实例规格
+      en: PostgreSQL Instance Class
+    Description:
+      zh-cn: 根据数据库引擎的类型和可用的区域支持选择实例规格；<br>请参见详细信息：<a href='https://help.aliyun.com/document_detail/26312.html' target='_blank'><b><font color='blue'>实例规格表</font></b></a>
+      en: Select the instance specification based on the type of database engine and the available area support;<br>see detail <a href='https://www.alibabacloud.com/help/doc-detail/26312.html' target='_blank'><b><font color='blue'>Instance specification sheet</font></b></a>
+    Required:
+      Fn::Equals:
+        - ExternalCloudDatabase
+        - ${DatabaseOption}
+    AssociationProperty: ALIYUN::RDS::Instance::InstanceType
+    AssociationPropertyMetadata:
+      Engine: PostgreSQL
+      ZoneId: ${ZoneId1}
+      Visible:
+        Condition:
+          Fn::Equals:
+            - ExternalCloudDatabase
+            - ${DatabaseOption}
+    Default: pg.n4.2c.2m
+  DBInstanceStorage:
+    Type: Number
+    Label:
+      zh-cn: PostgreSQL实例存储
+      en: Storage
+    Description:
+      zh-cn: RDS实例大小范围为20-2000，每5个增量，单位为GB
+      en: The size range of RDS instances is 20 - 2000, Incrementing in every 5, unit GB
+    Required:
+      Fn::Equals:
+        - ExternalCloudDatabase
+        - ${DatabaseOption}
+    ConstraintDescription:
+      zh-cn: RDS实例大小范围为20-2000，每5个增量，单位为GB
+      en: The size range of RDS instances is 20 - 2000, Incrementing in every 5, unit GB
+    Default: 200
+    MinValue: 20
+    MaxValue: 2000
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          Fn::Equals:
+            - ExternalCloudDatabase
+            - ${DatabaseOption}
+  DBInstanceStorageType:
+    Type: String
     Label:
       zh-cn: PostgreSQL实例存储类型
       en: Storage Type
+    Description:
+      zh-cn: 实例存储类型；<br>请参见详细信息：<a href='https://help.aliyun.com/document_detail/69795.html' target='_blank'><b><font color='blue'>存储类型</font></b></a>
+      en: The storage type of DB instance; see detail <a href='https://www.alibabacloud.com/help/en/apsaradb-for-rds/latest/storage-types' target='_blank'><b><font color=''blue''>Storage types</font></b></a>'
+    Required:
+      Fn::Equals:
+        - ExternalCloudDatabase
+        - ${DatabaseOption}
     AllowedValues:
       - local_ssd
       - cloud_ssd
       - cloud_essd
       - cloud_essd2
       - cloud_essd3
-    Type: String
     Default: cloud_essd
     AssociationPropertyMetadata:
       Visible:
@@ -428,127 +763,34 @@ Parameters:
           Fn::Equals:
             - ExternalCloudDatabase
             - ${DatabaseOption}
-  ADBPGInstanceSpec:
-    Label:
-      en: AnalyticDB DBInstanceSpec
-      zh-cn: AnalyticDB 实例规格
-    AllowedValues:
-      - 4C16G
-      - 8C32G
-      - 16C64G
+  PostgresSQLUserName:
     Type: String
-    Default: 4C16G
-    AssociationProperty: ALIYUN::GPDB::DBInstance:InstanceSpec
+    Description:
+      en: Primary account name of the database instance.
+      zh-cn: PostgresSQL数据库实例的主账号名称。
+    Required:
+      Fn::Equals:
+        - ExternalCloudDatabase
+        - ${DatabaseOption}
+    ConstraintDescription:
+      en: Consist of 2 to 16 characters of lowercase letters, underline. Must begin with a letter and be end with an alphanumeric character
+      zh-cn: 由 2 到 16 个小写字母组成，下划线。必须以字母开头，以字母数字字符结尾
+    Label:
+      zh-cn: PostgresSQL数据库账号名称
+      en: PostgresSQL Username
+    Default: postgres
+    MaxLength: 16
+    MinLength: 2
     AssociationPropertyMetadata:
       Visible:
         Condition:
           Fn::Equals:
             - ExternalCloudDatabase
-            - ${ADBOption}
-  AckNetworkPlugin:
-    Label:
-      en: ack plugin network
-      zh-cn: ack网络插件
-    AllowedValues:
-      - Flannel
-      - Terway
-    Type: String
-    Default: Flannel
-  ADBOption:
-    Label:
-      en: Vector database configuration
-      zh-cn: 向量数据库配置
-    AllowedValues:
-      - Integration
-      - ExternalCloudDatabase
-    Type: String
-    Default: Integration
-    AssociationPropertyMetadata:
-      ValueLabelMapping:
-        Integration:
-          zh-cn: 开源Weaviate组件
-          en: Open source database component.
-        ExternalCloudDatabase:
-          zh-cn: 新建AnalyticDB数据库
-          en: New AnalyticDB cloud database.
-  TLSCert:
-    Label:
-      en: TLS Cert.
-      zh-cn: TLS Cert证书
-    NoEcho: true
-    Type: String
-    Default: ''
-    AssociationProperty: FileContent
-    AssociationPropertyMetadata:
-      AcceptFileSuffixes: .crt
-      Visible:
-        Condition:
-          Fn::Equals:
-            - true
-            - ${EnableTLSConfig}
-  VSwitchCidrBlock2:
-    Description:
-      zh-cn: 必须属于VPC的子网段。
-      en: Must belong to the subnet segment of VPC.
-    Label:
-      en: VSwitch CIDR Block
-      zh-cn: 交换机子网网段2
-    Type: String
-    Default: 192.168.1.0/24
-    AssociationProperty: ALIYUN::VPC::VSwitch::CidrBlock
-    AssociationPropertyMetadata:
-      VpcCidrBlock: VpcCidrBlock
-      Visible:
-        Condition:
-          Fn::Equals:
-            - NewVPC
-            - ${VpcOption}
-  VpcId:
-    Label:
-      en: VPC ID
-      zh-cn: 专有网络VPC实例ID
-    Type: String
-    Default: ''
-    AssociationProperty: ALIYUN::ECS::VPC::VPCId
-    AssociationPropertyMetadata:
-      Visible:
-        Condition:
-          Fn::Equals:
-            - ExistingVPC
-            - ${VpcOption}
-  VSwitchCidrBlock1:
-    Description:
-      zh-cn: 必须属于VPC的子网段。
-      en: Must belong to the subnet segment of VPC.
-    Label:
-      en: VSwitch CIDR Block
-      zh-cn: 交换机子网网段1
-    Type: String
-    Default: 192.168.0.0/24
-    AssociationProperty: ALIYUN::VPC::VSwitch::CidrBlock
-    AssociationPropertyMetadata:
-      VpcCidrBlock: VpcCidrBlock
-      Visible:
-        Condition:
-          Fn::Equals:
-            - NewVPC
-            - ${VpcOption}
-  TLSSecret:
-    Label:
-      en: TLS Secret.
-      zh-cn: TLS 密钥
-    NoEcho: true
-    Type: String
-    Default: ''
-    AssociationProperty: FileContent
-    AssociationPropertyMetadata:
-      AcceptFileSuffixes: .key
-      Visible:
-        Condition:
-          Fn::Equals:
-            - true
-            - ${EnableTLSConfig}
+            - ${DatabaseOption}
   PostgresSQLPassword:
+    Default: Null
+    NoEcho: true
+    Type: String
     Description:
       en: Server login password, Length 8-30, must contain three(Capital letters, lowercase letters, numbers, ()`~!@#$%^&*_-+=|{}[]:;'<>,.?/ Special symbol in)
       zh-cn: 数据库访问密码,长度8-30，必须包含三项（大写字母、小写字母、数字、 ()`~!@#$%^&*_-+=|{}[]:;'<>,.?/ 中的特殊符号）
@@ -558,60 +800,1733 @@ Parameters:
     ConstraintDescription:
       en: Length 8-30, must contain three(Capital letters, lowercase letters, numbers, ()!@#%&*-+=Special symbol in)
       zh-cn: 长度8-30，必须包含三项（大写字母、小写字母、数字、 ()!@#%&*-+=中的特殊符号）
-    NoEcho: true
+    Required:
+      Fn::Equals:
+        - ExternalCloudDatabase
+        - ${DatabaseOption}
     AllowedPattern: '[0-9A-Za-z\_\-\&:;''<>,=%`~!@#\(\)\$\^\*\+\|\{\}\[\]\.\?\/]+$'
-    MaxLength: 30
     MinLength: 8
-    Type: String
+    MaxLength: 30
     AssociationPropertyMetadata:
       Visible:
         Condition:
           Fn::Equals:
             - ExternalCloudDatabase
             - ${DatabaseOption}
-  ADBPGAccount:
-    Description:
-      en: Primary account name of the database instance.
-      zh-cn: ADBPG 数据库实例的主账号名称。
-    Label:
-      zh-cn: ADBPG数据库账号名称
-      en: ADBPG Account
-    ConstraintDescription:
-      en: Consist of 2 to 16 characters of lowercase letters, underline. Must begin with a letter and be end with an alphanumeric character
-      zh-cn: 由 2 到 16 个小写字母组成，下划线。必须以字母开头，以字母数字字符结尾
-    MaxLength: 16
-    MinLength: 2
+  ADBPGInstanceSpec:
     Type: String
-    Default: dify
+    Label:
+      en: AnalyticDB DBInstanceSpec
+      zh-cn: AnalyticDB 实例规格
+    AssociationProperty: ALIYUN::GPDB::DBInstance:InstanceSpec
+    Default: 4C16G
+    Required:
+      Fn::Equals:
+        - ExternalCloudDatabase
+        - ${ADBOption}
+    AllowedValues:
+      - 4C16G
+      - 8C32G
+      - 16C64G
     AssociationPropertyMetadata:
       Visible:
         Condition:
           Fn::Equals:
             - ExternalCloudDatabase
             - ${ADBOption}
+  ADBPGSegmentStorage:
+    Type: Number
+    AssociationProperty: ALIYUN::ECS::Instance::StorageSize
+    Label:
+      en: SegmentStorageSize
+      zh-cn: AnalyticDB Segment存储大小(G)
+    Default: 200
+    Required:
+      Fn::Equals:
+        - ExternalCloudDatabase
+        - ${ADBOption}
+    AllowedValues:
+      - 200
+      - 400
+      - 800
+      - 1024
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          Fn::Equals:
+            - ExternalCloudDatabase
+            - ${ADBOption}
+  ADBPGAccount:
+    Type: String
+    Description:
+      en: Primary account name of the database instance.
+      zh-cn: ADBPG 数据库实例的主账号名称。
+    ConstraintDescription:
+      en: Consist of 2 to 16 characters of lowercase letters, underline. Must begin with a letter and be end with an alphanumeric character
+      zh-cn: 由 2 到 16 个小写字母组成，下划线。必须以字母开头，以字母数字字符结尾
+    Label:
+      zh-cn: ADBPG数据库账号名称
+      en: ADBPG Account
+    Default: dify
+    MaxLength: 16
+    MinLength: 2
+    Required:
+      Fn::Equals:
+        - ExternalCloudDatabase
+        - ${ADBOption}
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          Fn::Equals:
+            - ExternalCloudDatabase
+            - ${ADBOption}
+  ADBPGPassword:
+    Default: Null
+    NoEcho: true
+    Type: String
+    Description:
+      en: Server login password, Length 8-30, must contain three(Capital letters, lowercase letters, numbers, ()`~!@#$%^&*_-+=|{}[]:;'<>,.?/ Special symbol in)
+      zh-cn: 数据库访问密码,长度8-30，必须包含三项（大写字母、小写字母、数字、 ()`~!@#$%^&*_-+=|{}[]:;'<>,.?/ 中的特殊符号）
+    Label:
+      en: Instance Password
+      zh-cn: ADBPG 数据库密码
+    ConstraintDescription:
+      en: Length 8-30, must contain three(Capital letters, lowercase letters, numbers, ()!@#%&*-+=Special symbol in)
+      zh-cn: 长度8-30，必须包含三项（大写字母、小写字母、数字、 ()!@#%&*-+=中的特殊符号）
+    AllowedPattern: '[0-9A-Za-z\_\-\&:;''<>,=%`~!@#\(\)\$\^\*\+\|\{\}\[\]\.\?\/]+$'
+    MinLength: 8
+    MaxLength: 30
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          Fn::Equals:
+            - ExternalCloudDatabase
+            - ${ADBOption}
+    Required:
+      Fn::Equals:
+        - ExternalCloudDatabase
+        - ${ADBOption}
+  AccessKeyID:
+    Type: String
+    Default: Null
+    NoEcho: true
+    Description:
+      en: To access AnalyticDB, you are advised to use the AK/SK of the Ram subaccount. The AliyunGPDBFullAccess permission must be configured for the Ram subaccount.
+      zh-cn: 访问AnalyticDB使用,建议使用Ram子账号的AK/SK,Ram子账号需要配置AliyunGPDBFullAccess权限。
+    AllowedPattern: '[0-9a-zA-Z]+$'
+    Label:
+      en: AccessKey ID
+      zh-cn: AccessKey ID
+    Required:
+      Fn::Equals:
+        - ExternalCloudDatabase
+        - ${ADBOption}
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          Fn::Equals:
+            - ExternalCloudDatabase
+            - ${ADBOption}
+  AccessKeySecret:
+    Type: String
+    Default: Null
+    NoEcho: true
+    Description:
+      en: To access AnalyticDB, you are advised to use the AK/SK of the Ram subaccount. The AliyunGPDBFullAccess permission must be configured for the Ram subaccount.
+      zh-cn: 访问AnalyticDB使用,建议使用Ram子账号的AK/SK,Ram子账号需要配置AliyunGPDBFullAccess权限。
+    AllowedPattern: '[0-9a-zA-Z]+$'
+    Label:
+      en: AccessKey Secret
+      zh-cn: AccessKey Secret
+    Required:
+      Fn::Equals:
+        - ExternalCloudDatabase
+        - ${ADBOption}
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          Fn::Equals:
+            - ExternalCloudDatabase
+            - ${ADBOption}
+  HelmValues:
+    Type: Json
+    Label:
+      en: helm values
+      zh-cn: helm配置
+    Description:
+      zh-cn: 推荐使用默认值
+    Default:
+      image:
+        api:
+          tag: 0.14.2
+          pullPolicy: IfNotPresent
+        web:
+          tag: 0.14.2
+          pullPolicy: IfNotPresent
+        sandbox:
+          tag: 0.2.10
+          pullPolicy: IfNotPresent
+        proxy:
+          tag: 1.27.0
+          pullPolicy: IfNotPresent
+        ssrfProxy:
+          tag: latest
+          pullPolicy: IfNotPresent
+Resources:
+  VpcModule:
+    Version: v1
+    Type: MODULE::ACS::ComputeNest::VpcAndVSwitch
+    Condition: CreateAck
+    Properties:
+      EnableDualZones: true
+      VSwitchCidrBlockSecondary:
+        Ref: VSwitchCidrBlock2
+      VpcId:
+        Ref: VpcId
+      ZoneIdSecondary:
+        Ref: ZoneId2
+      VSwitchCidrBlock:
+        Ref: VSwitchCidrBlock1
+      VpcCidrBlock:
+        Ref: VpcCidrBlock
+      ZoneId:
+        Ref: ZoneId1
+      VSwitchIdSecondary:
+        Ref: VSwitchId2
+      VSwitchId:
+        Ref: VSwitchId1
+      VpcOption:
+        Ref: VpcOption
+  RedisInstance:
+    Type: ALIYUN::REDIS::Instance
+    Condition: CreateRedisConditions
+    Properties:
+      ChargeType:
+        Ref: PayType
+      PeriodUnit:
+        Ref: PayPeriodUnit
+      Period:
+        Ref: PayPeriod
+      VpcId:
+        Fn::GetAtt:
+          - AckModule
+          - ClusterVpcId
+      VSwitchId:
+        Fn::GetAtt:
+          - AckModule
+          - ClusterVSwitchId
+      ZoneId:
+        Fn::GetAtt:
+          - AckModule
+          - ClusterZoneId
+      InstanceClass: redis.master.mid.default
+      ShardCount: 2
+      EngineVersion: '5.0'
+      EvictionPolicy: noeviction
+      InstanceName:
+        Ref: ALIYUN::StackName
+      Password:
+        Ref: RedisInstancePassword
+  RedisWhitelist:
+    Type: ALIYUN::REDIS::Whitelist
+    Condition: CreateRedisConditions
+    Properties:
+      SecurityIpGroupAttribute: default
+      SecurityIps:
+        Fn::Join:
+          - ','
+          - - Ref: ServiceCidr
+            - Ref: PodCidr
+            - Fn::GetAtt:
+                - AckModule
+                - ClusterVpcCidr
+      InstanceId:
+        Ref: RedisInstance
+  PostgreSQLInstance:
+    Type: ALIYUN::RDS::DBInstance
+    Condition: CreateDataBaseConditions
+    Properties:
+      ZoneId:
+        Fn::GetAtt:
+          - AckModule
+          - ClusterZoneId
+      VpcId:
+        Fn::GetAtt:
+          - AckModule
+          - ClusterVpcId
+      VSwitchId:
+        Fn::GetAtt:
+          - AckModule
+          - ClusterVSwitchId
+      Engine: PostgreSQL
+      EngineVersion: '14.0'
+      DBInstanceClass:
+        Ref: DBInstanceClass
+      DBInstanceStorage:
+        Ref: DBInstanceStorage
+      DBInstanceStorageType:
+        Ref: DBInstanceStorageType
+      Category: HighAvailability
+      MasterUserType: Super
+      DBInstanceNetType: Intranet
+      MasterUserPassword:
+        Ref: PostgresSQLPassword
+      MasterUsername:
+        Ref: PostgresSQLUserName
+      PayType:
+        Ref: PayType
+      PeriodType:
+        Ref: PayPeriodUnit
+      Period:
+        Ref: PayPeriod
+      SecurityIPList:
+        Fn::Join:
+          - ','
+          - - Ref: ServiceCidr
+            - Ref: PodCidr
+            - Fn::GetAtt:
+                - AckModule
+                - ClusterVpcCidr
+  DifyDataBase:
+    Type: ALIYUN::RDS::Database
+    Condition: CreateDataBaseConditions
+    Properties:
+      CharacterSetName: UTF8
+      DBInstanceId:
+        Fn::GetAtt:
+          - PostgreSQLInstance
+          - DBInstanceId
+      DBName: dify
+  DifySetUpDataBase:
+    Type: ALIYUN::RDS::Database
+    Condition: CreateDataBaseConditions
+    Properties:
+      CharacterSetName: UTF8
+      DBInstanceId:
+        Fn::GetAtt:
+          - PostgreSQLInstance
+          - DBInstanceId
+      DBName: dify_setups
+  ADBPGInstance:
+    Type: ALIYUN::GPDB::DBInstance
+    Condition: CreateADBConditions
+    Properties:
+      MasterNodeNum: 1
+      SegNodeNum: 4
+      InstanceSpec:
+        Ref: ADBPGInstanceSpec
+      VectorConfigurationStatus: true
+      EngineVersion: '6.0'
+      ZoneId:
+        Fn::GetAtt:
+          - AckModule
+          - ClusterZoneId
+      VPCId:
+        Fn::GetAtt:
+          - AckModule
+          - ClusterVpcId
+      PayType:
+        Ref: PayType
+      VSwitchId:
+        Fn::GetAtt:
+          - AckModule
+          - ClusterVSwitchId
+      Period:
+        Ref: PayPeriod
+      PeriodUnit:
+        Ref: PayPeriodUnit
+      DBInstanceCategory: Basic
+      SegStorageType: cloud_essd
+      StorageSize:
+        Ref: ADBPGSegmentStorage
+      DBInstanceMode: StorageElastic
+      SecurityIPList:
+        Fn::Join:
+          - ','
+          - - Ref: ServiceCidr
+            - Ref: PodCidr
+            - Fn::GetAtt:
+                - AckModule
+                - ClusterVpcCidr
+  GPDBAccount:
+    Type: ALIYUN::GPDB::Account
+    Condition: CreateADBConditions
+    Properties:
+      DBInstanceId:
+        Fn::GetAtt:
+          - ADBPGInstance
+          - DBInstanceId
+      AccountPassword:
+        Ref: ADBPGPassword
+      AccountName:
+        Ref: ADBPGAccount
+  AckModule:
+    Version: default
+    Type: MODULE::ACS::ComputeNest::AckOrAcsCluster
+    Properties:
+      EnableDualZones: true
+      EnableCnfsNas: true
+      EnableAutoScaling:
+        Ref: AutoScalingOption
+      PayType:
+        Ref: PayType
+      PayPeriod:
+        Ref: PayPeriod
+      PayPeriodUnit:
+        Ref: PayPeriodUnit
+      CsOptions:
+        Ref: AckOptions
+      VpcId:
+        Fn::GetAtt:
+          - VpcModule
+          - VpcId
+      ServiceCidr:
+        Ref: ServiceCidr
+      WorkerInstanceTypes:
+        Ref: InstanceType
+      ZoneIdSecondary:
+        Ref: ZoneId2
+      ClusterId:
+        Ref: ClusterId
+      ZoneId:
+        Ref: ZoneId1
+      WorkerSystemDiskSize:
+        Ref: WorkerSystemDiskSize
+      AckNetworkPlugin:
+        Ref: AckNetworkPlugin
+      VSwitchIdSecondary:
+        Fn::GetAtt:
+          - VpcModule
+          - VSwitchIdSecondary
+      VSwitchId:
+        Fn::GetAtt:
+          - VpcModule
+          - VSwitchId
+      PodVSwitchId:
+        Fn::GetAtt:
+          - VpcModule
+          - VSwitchId
+      PodVSwitchIdSecondary:
+        Fn::GetAtt:
+          - VpcModule
+          - VSwitchIdSecondary
+      WorkerSystemDiskCategory:
+        Ref: WorkerSystemDiskCategory
+      LoginPassword:
+        Ref: InstancePassword
+      WorkerInstanceCount:
+        Ref: WorkerInstanceCount
+      WorkerInstanceMinCount:
+        Ref: WorkerInstanceMinCount
+      WorkerInstanceMaxCount:
+        Ref: WorkerInstanceMaxCount
+  ACKAddons:
+    Type: ALIYUN::CS::ClusterAddons
+    Properties:
+      ClusterId:
+        Fn::GetAtt:
+          - AckModule
+          - ClusterId
+      InstalledIgnore: true
+      Addons:
+        - Name: nginx-ingress-controller
+        - Name: ack-node-local-dns
+        - Name: logtail-ds
+          Config: '{"IngressDashboardEnabled":"true"}'
+  Sleep:
+    Type: ALIYUN::ROS::Sleep
+    DependsOn:
+      - AckModule
+      - ACKAddons
+      - PostgreSQLInstance
+      - RedisInstance
+      - ADBPGInstance
+    Properties:
+      CreateDuration: 60
+  ClusterAppliaction:
+    Type: ALIYUN::CS::ClusterApplication
+    Condition: EnableTLSConfigConditions
+    DependsOn:
+      - Sleep
+    Properties:
+      DefaultNamespace: dify-system
+      YamlContent:
+        Fn::Sub:
+          - |
+            apiVersion: v1
+            kind: Secret
+            type: IngressTLS
+            metadata:
+              name: dify-tls-secrets
+              namespace: dify-system
+            data:
+              tls.crt: ${TLSCertString}
+              tls.key: ${TLSSecretString}
+          - TLSCertString:
+              Fn::Base64Encode:
+                Ref: TLSCert
+            TLSSecretString:
+              Fn::Base64Encode:
+                Ref: TLSSecret
+      ClusterId:
+        Fn::GetAtt:
+          - AckModule
+          - ClusterId
+  AckDify:
+    Type: MODULE::ACS::ComputeNest::FluxOciHelmDeploy
+    Version: default
+    DependsOn: Sleep
+    Properties:
+      Namespace: dify-system
+      HelmChartUrl: '{{ computenest::helmchart::dify }}'
+      DockerConfigJson: '{{ computenest::helm::dockerconfigjson }}'
+      ClusterId:
+        Fn::GetAtt:
+          - AckModule
+          - ClusterId
+      ReleaseName: ack-dify
+      WaitUntil:
+        Fn::If:
+          - EnableHPAConditions
+          - - Kind: Deployment
+              Name: ack-dify
+              Namespace: dify-system
+              JsonPath: $.status.readyReplicas
+              Operator: NotEquals
+              Value: '2'
+              ValueType: Json
+              FirstMatch: true
+              Timeout: 6000
+          - - Kind: Deployment
+              Name: ack-dify
+              Namespace: dify-system
+              JsonPath: $.status.readyReplicas
+              Operator: NotEquals
+              Value: '1'
+              ValueType: Json
+              FirstMatch: true
+              Timeout: 6000
+      ChartValues:
+        Fn::MergeMap:
+          - Ref: HelmValues
+          - repository:
+              Ref: Repo
+            namespace: dify-system
+            image:
+              api:
+                repo:
+                  Ref: Repo
+                image: dify-api
+              web:
+                repo:
+                  Ref: Repo
+                image: dify-web
+              sandbox:
+                repo:
+                  Ref: Repo
+                image: dify-sandbox
+              proxy:
+                repo:
+                  Ref: Repo
+                image: nginx
+              ssrfProxy:
+                repo:
+                  Ref: Repo
+                image: squid
+            api:
+              enabled: true
+              replicas:
+                Fn::If:
+                  - EnableHPAConditions
+                  - 2
+                  - 1
+              resources: { }
+              lifecycle: { }
+              readinessProbe: { }
+              livenessProbe: { }
+              startupProbe: { }
+              nodeSelector: { }
+              affinity:
+                Fn::If:
+                  - EnableHPAConditions
+                  - podAntiAffinity:
+                      preferredDuringSchedulingIgnoredDuringExecution:
+                        - weight: 100
+                          podAffinityTerm:
+                            labelSelector:
+                              matchExpressions:
+                                - key: component
+                                  operator: In
+                                  values:
+                                    - api
+                            topologyKey: kubernetes.io/hostname
+                  - { }
+              tolerations: [ ]
+              extraEnv:
+                - name: CHECK_UPDATE_URL
+                  value: ''
+                - name: CODE_MAX_NUMBER
+                  value: '9223372036854775807'
+                - name: CODE_MIN_NUMBER
+                  value: '-9223372036854775808'
+                - name: CODE_MAX_STRING_LENGTH
+                  value: '80000'
+                - name: TEMPLATE_TRANSFORM_MAX_LENGTH
+                  value: '80000'
+                - name: CODE_MAX_STRING_ARRAY_LENGTH
+                  value: '30'
+                - name: CODE_MAX_OBJECT_ARRAY_LENGTH
+                  value: '30'
+                - name: CODE_MAX_NUMBER_ARRAY_LENGTH
+                  value: '1000'
+                - name: CODE_MAX_DEPTH
+                  value: '5'
+                - name: CODE_MAX_PRECISION
+                  value: '20'
+              service:
+                port: 5001
+                annotations: { }
+                labels: { }
+                clusterIP: ''
+              logLevel: INFO
+              url:
+                consoleApi: ''
+                consoleWeb: ''
+                serviceApi: ''
+                appApi: ''
+                appWeb: ''
+                files: ''
+              mail:
+                defaultSender: 'YOUR EMAIL FROM (eg: no-reply <no-reply@dify.ai>)'
+                type: resend
+                resend:
+                  apiKey: xxxx
+                  apiUrl: https://api.resend.com
+                smtp:
+                  server: smtp.server.com
+                  port: 465
+                  username: YOUR EMAIL
+                  password: YOUR EMAIL PASSWORD
+                  tls:
+                    enabled: true
+                    optimistic: false
+              migration: true
+              secretKey: sk-9f73s3ljTXVcMT3Blb3ljTqtsKiGHXVcMT3BlbkFJLK7U
+              persistence:
+                mountPath: /app/api/storage
+                annotations:
+                  helm.sh/resource-policy: keep
+                persistentVolumeClaim:
+                  existingClaim: ''
+                  storageClass: alibabacloud-cnfs-nas
+                  accessModes: ReadWriteMany
+                  size: 50Gi
+                  subPath: ''
+            worker:
+              enabled: true
+              replicas:
+                Fn::If:
+                  - EnableHPAConditions
+                  - 2
+                  - 1
+              resources: { }
+              lifecycle: { }
+              readinessProbe: { }
+              livenessProbe: { }
+              startupProbe: { }
+              nodeSelector: { }
+              affinity:
+                Fn::If:
+                  - EnableHPAConditions
+                  - podAntiAffinity:
+                      preferredDuringSchedulingIgnoredDuringExecution:
+                        - weight: 100
+                          podAffinityTerm:
+                            labelSelector:
+                              matchExpressions:
+                                - key: component
+                                  operator: In
+                                  values:
+                                    - worker
+                            topologyKey: kubernetes.io/hostname
+                  - { }
+              tolerations: [ ]
+              extraEnv: Null
+              logLevel: INFO
+              autoscaling:
+                enabled:
+                  Fn::If:
+                    - EnableHPAConditions
+                    - true
+                    - false
+                minReplicas: 1
+                maxReplicas: 5
+                metrics:
+                  - type: Resource
+                    resource:
+                      name: memory
+                      target:
+                        averageUtilization: 80
+                        type: Utilization
+            proxy:
+              enabled: true
+              replicas: 1
+              resources: { }
+              lifecycle: { }
+              readinessProbe: { }
+              livenessProbe: { }
+              startupProbe: { }
+              nodeSelector: { }
+              affinity: { }
+              tolerations: [ ]
+              proxyConf: ''
+              nginxConf: ''
+              defaultConf: ''
+              extraEnv: Null
+              log:
+                persistence:
+                  enabled: false
+                  mountPath: /var/log/nginx
+                  annotations:
+                    helm.sh/resource-policy: keep
+                  persistentVolumeClaim:
+                    existingClaim: ''
+                    storageClass: ''
+                    accessModes: ReadWriteMany
+                    size: 20Gi
+                    subPath: ''
+              service:
+                port: 80
+                annotations: { }
+                labels: { }
+                clusterIP: ''
+            web:
+              enabled: true
+              replicas:
+                Fn::If:
+                  - EnableHPAConditions
+                  - 2
+                  - 1
+              resources: { }
+              lifecycle: { }
+              readinessProbe: { }
+              livenessProbe: { }
+              startupProbe: { }
+              nodeSelector: { }
+              affinity:
+                Fn::If:
+                  - EnableHPAConditions
+                  - podAntiAffinity:
+                      preferredDuringSchedulingIgnoredDuringExecution:
+                        - weight: 100
+                          podAffinityTerm:
+                            labelSelector:
+                              matchExpressions:
+                                - key: component
+                                  operator: In
+                                  values:
+                                    - web
+                            topologyKey: kubernetes.io/hostname
+                  - { }
+              tolerations: [ ]
+              extraEnv:
+                - name: EDITION
+                  value: SELF_HOSTED
+              service:
+                port: 3000
+                annotations: { }
+                labels: { }
+                clusterIP: ''
+            sandbox:
+              enabled: true
+              replicas:
+                Fn::If:
+                  - EnableHPAConditions
+                  - 2
+                  - 1
+              resources: { }
+              lifecycle: { }
+              readinessProbe: { }
+              livenessProbe: { }
+              startupProbe: { }
+              nodeSelector: { }
+              affinity:
+                Fn::If:
+                  - EnableHPAConditions
+                  - podAntiAffinity:
+                      preferredDuringSchedulingIgnoredDuringExecution:
+                        - weight: 100
+                          podAffinityTerm:
+                            labelSelector:
+                              matchExpressions:
+                                - key: component
+                                  operator: In
+                                  values:
+                                    - sandbox
+                            topologyKey: kubernetes.io/hostname
+                  - { }
+              tolerations: [ ]
+              extraEnv:
+                - name: WORKER_TIMEOUT
+                  value: '15'
+              service:
+                port: 8194
+                annotations: { }
+                labels: { }
+                clusterIP: ''
+              auth:
+                apiKey: dify-sandbox
+              privileged: false
+            ssrfProxy:
+              enabled: false
+              replicas: 1
+              resources: { }
+              nodeSelector: { }
+              affinity: { }
+              tolerations: [ ]
+              extraEnv: Null
+              log:
+                persistence:
+                  enabled: false
+                  mountPath: /var/log/squid
+                  annotations:
+                    helm.sh/resource-policy: keep
+                  persistentVolumeClaim:
+                    existingClaim: ''
+                    storageClass: ''
+                    accessModes: ReadWriteMany
+                    size: 20Gi
+                    subPath: ''
+              service:
+                port: 3128
+                annotations: { }
+                labels: { }
+                clusterIP: ''
+            postgresql:
+              enabled:
+                Fn::If:
+                  - CreateDataBaseConditions
+                  - false
+                  - true
+              name: postgres
+              global:
+                storageClass: ''
+                postgresql:
+                  auth:
+                    postgresPassword: difyai123456
+                    username: ''
+                    password: ''
+                    database: dify
+              image:
+                registry:
+                  Ref: Repo
+                repository: postgresql
+                tag: 15.3.0-debian-11-r7
+                pullPolicy: IfNotPresent
+              architecture: replication
+              primary:
+                resources:
+                  limits: { }
+                  requests: { }
+                persistence:
+                  enabled: true
+                  storageClass: alicloud-disk-topology-alltype
+                  accessModes:
+                    - ReadWriteOnce
+                  size: 50Gi
+                affinity: { }
+                tolerations: [ ]
+              readReplicas:
+                name: read
+                replicaCount: 1
+                resources:
+                  limits: { }
+                  requests: { }
+                persistence:
+                  enabled: true
+                  storageClass: alicloud-disk-topology-alltype
+                  accessModes:
+                    - ReadWriteOnce
+                  size: 20Gi
+                affinity: { }
+                tolerations: [ ]
+            weaviate:
+              enabled:
+                Fn::If:
+                  - CreateADBConditions
+                  - false
+                  - true
+              image:
+                registry:
+                  Ref: Repo
+                tag: 1.19.1
+                repo: weaviate
+                pullPolicy: IfNotPresent
+                pullSecrets: [ ]
+              command:
+                - /bin/weaviate
+              args:
+                - '--host'
+                - 0.0.0.0
+                - '--port'
+                - '8080'
+                - '--scheme'
+                - http
+                - '--config-file'
+                - /weaviate-config/conf.yaml
+                - '--read-timeout=60s'
+                - '--write-timeout=60s'
+              initContainers:
+                sysctlInitContainer:
+                  enabled: true
+                  sysctlVmMaxMapCount: 524288
+                  image:
+                    registry: docker.io
+                    repo: alpine
+                    tag: latest
+                    pullPolicy: IfNotPresent
+                extraInitContainers: { }
+              replicas: 1
+              resources: { }
+              serviceAccountName: Null
+              storage:
+                size: 32Gi
+                storageClassName: alicloud-disk-topology-alltype
+              service:
+                name: weaviate
+                type: ClusterIP
+                loadBalancerSourceRanges: [ ]
+                clusterIP: Null
+                annotations: { }
+              startupProbe:
+                enabled: false
+                initialDelaySeconds: 300
+                periodSeconds: 60
+                failureThreshold: 50
+                successThreshold: 1
+                timeoutSeconds: 3
+              livenessProbe:
+                initialDelaySeconds: 900
+                periodSeconds: 10
+                failureThreshold: 30
+                successThreshold: 1
+                timeoutSeconds: 3
+              readinessProbe:
+                initialDelaySeconds: 3
+                periodSeconds: 10
+                failureThreshold: 3
+                successThreshold: 1
+                timeoutSeconds: 3
+              terminationGracePeriodSeconds: 600
+              authentication:
+                anonymous_access:
+                  enabled: false
+                apikey:
+                  enabled: true
+                  allowed_keys:
+                    - WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih
+                  users:
+                    - hello@dify.ai
+                oidc:
+                  enabled: false
+              authorization:
+                admin_list:
+                  enabled: true
+                  users:
+                    - hello@dify.ai
+                  read_only_users: Null
+              query_defaults:
+                limit: 100
+              debug: false
+              env:
+                CLUSTER_GOSSIP_BIND_PORT: 7000
+                CLUSTER_DATA_BIND_PORT: 7001
+                GOGC: 100
+                PROMETHEUS_MONITORING_ENABLED: false
+                QUERY_MAXIMUM_RESULTS: 100000
+                TRACK_VECTOR_DIMENSIONS: false
+                REINDEX_VECTOR_DIMENSIONS_AT_STARTUP: false
+                AUTHENTICATION_APIKEY_ENABLED: 'true'
+                AUTHENTICATION_APIKEY_ALLOWED_KEYS: WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih
+                AUTHENTICATION_APIKEY_USERS: hello@dify.ai
+                AUTHORIZATION_ADMINLIST_ENABLED: 'true'
+                AUTHORIZATION_ADMINLIST_USERS: hello@dify.ai
+              envSecrets: Null
+              backups:
+                filesystem:
+                  enabled: false
+                  envconfig:
+                    BACKUP_FILESYSTEM_PATH: /tmp/backups
+                s3:
+                  enabled: false
+                  serviceAccountName: Null
+                  envconfig:
+                    BACKUP_S3_BUCKET: weaviate-backups
+                  secrets: { }
+                  envSecrets: { }
+                gcs:
+                  enabled: false
+                  envconfig:
+                    BACKUP_GCS_BUCKET: weaviate-backups
+                  secrets: { }
+                  envSecrets: { }
+                azure:
+                  enabled: false
+                  envconfig:
+                    BACKUP_AZURE_CONTAINER: weaviate-backups
+                  secrets: { }
+                  envSecrets: { }
+              modules:
+                default_vectorizer_module: none
+              custom_config_map:
+                enabled: false
+                name: custom-config
+              annotations: Null
+              nodeSelector: Null
+              tolerations: Null
+              affinity:
+                podAntiAffinity:
+                  preferredDuringSchedulingIgnoredDuringExecution:
+                    - weight: 1
+                      podAffinityTerm:
+                        topologyKey: kubernetes.io/hostname
+                        labelSelector:
+                          matchExpressions:
+                            - key: app
+                              operator: In
+                              values:
+                                - weaviate
+            service:
+              type: ClusterIP
+              port: 80
+            ingress:
+              enabled:
+                Fn::If:
+                  - CreateAck
+                  - true
+                  - false
+              className: ''
+              annotations: { }
+              hosts:
+                - host:
+                    Ref: DomainAddress
+                  paths:
+                    - path: /
+                      pathType: Prefix
+                      backend:
+                        service:
+                          name: ack-dify
+                          port: 80
+              tls:
+                Fn::If:
+                  - EnableTLSConfigConditions
+                  - - secretName: dify-tls-secrets
+                      hosts:
+                        - Ref: DomainAddress
+                  - [ ]
+            resources: { }
+            nodeSelector: { }
+            tolerations: [ ]
+            affinity: { }
+            redis:
+              enabled:
+                Fn::If:
+                  - CreateRedisConditions
+                  - false
+                  - true
+              global:
+                imageRegistry: ''
+                imagePullSecrets: [ ]
+                storageClass: ''
+                redis:
+                  password: ''
+              kubeVersion: ''
+              nameOverride: ''
+              fullnameOverride: ''
+              commonLabels: { }
+              commonAnnotations: { }
+              secretAnnotations: { }
+              clusterDomain: cluster.local
+              extraDeploy: [ ]
+              useHostnames: true
+              nameResolutionThreshold: 5
+              nameResolutionTimeout: 5
+              diagnosticMode:
+                enabled: false
+                command:
+                  - sleep
+                args:
+                  - infinity
+              image:
+                registry:
+                  Ref: Repo
+                repository: redis
+                tag: 6.2.7-debian-11-r11
+                digest: ''
+                pullPolicy: IfNotPresent
+                pullSecrets: [ ]
+                debug: false
+              architecture: replication
+              auth:
+                enabled: true
+                sentinel: true
+                password: difyai123456
+                existingSecret: ''
+                existingSecretPasswordKey: ''
+                usePasswordFiles: false
+              commonConfiguration: |-
+                # Enable AOF https://redis.io/topics/persistence#append-only-file
+                appendonly yes
+                # Disable RDB persistence, AOF persistence already enabled.
+                save ""
+              existingConfigmap: ''
+              master:
+                count: 1
+                configuration: ''
+                disableCommands:
+                  - FLUSHDB
+                  - FLUSHALL
+                command: [ ]
+                args: [ ]
+                preExecCmds: [ ]
+                extraFlags: [ ]
+                extraEnvVars: [ ]
+                extraEnvVarsCM: ''
+                extraEnvVarsSecret: ''
+                containerPorts:
+                  redis: 6379
+                startupProbe:
+                  enabled: false
+                  initialDelaySeconds: 20
+                  periodSeconds: 5
+                  timeoutSeconds: 5
+                  successThreshold: 1
+                  failureThreshold: 5
+                livenessProbe:
+                  enabled: true
+                  initialDelaySeconds: 20
+                  periodSeconds: 5
+                  timeoutSeconds: 5
+                  successThreshold: 1
+                  failureThreshold: 5
+                readinessProbe:
+                  enabled: true
+                  initialDelaySeconds: 20
+                  periodSeconds: 5
+                  timeoutSeconds: 1
+                  successThreshold: 1
+                  failureThreshold: 5
+                customStartupProbe: { }
+                customLivenessProbe: { }
+                customReadinessProbe: { }
+                resources:
+                  limits: { }
+                  requests: { }
+                podSecurityContext:
+                  enabled: true
+                  fsGroup: 1001
+                containerSecurityContext:
+                  enabled: true
+                  runAsUser: 1001
+                kind: StatefulSet
+                schedulerName: ''
+                updateStrategy:
+                  type: RollingUpdate
+                minReadySeconds: 0
+                priorityClassName: ''
+                hostAliases: [ ]
+                podLabels: { }
+                podAnnotations: { }
+                shareProcessNamespace: false
+                podAffinityPreset: ''
+                podAntiAffinityPreset: soft
+                nodeAffinityPreset:
+                  type: ''
+                  key: ''
+                  values: [ ]
+                affinity: { }
+                nodeSelector: { }
+                tolerations: [ ]
+                topologySpreadConstraints: [ ]
+                dnsPolicy: ''
+                dnsConfig: { }
+                lifecycleHooks: { }
+                extraVolumes: [ ]
+                extraVolumeMounts: [ ]
+                sidecars: [ ]
+                initContainers: [ ]
+                persistence:
+                  enabled: true
+                  medium: ''
+                  sizeLimit: ''
+                  path: /data
+                  subPath: ''
+                  subPathExpr: ''
+                  storageClass: alicloud-disk-topology-alltype
+                  accessModes:
+                    - ReadWriteOnce
+                  size: 20Gi
+                  annotations: { }
+                  labels: { }
+                  selector: { }
+                  dataSource: { }
+                  existingClaim: ''
+                service:
+                  type: ClusterIP
+                  ports:
+                    redis: 6379
+                  nodePorts:
+                    redis: ''
+                  externalTrafficPolicy: Cluster
+                  extraPorts: [ ]
+                  internalTrafficPolicy: Cluster
+                  clusterIP: ''
+                  loadBalancerIP: ''
+                  loadBalancerSourceRanges: [ ]
+                  externalIPs: [ ]
+                  annotations: { }
+                  sessionAffinity: None
+                  sessionAffinityConfig: { }
+                terminationGracePeriodSeconds: 30
+                serviceAccount:
+                  create: false
+                  name: ''
+                  automountServiceAccountToken: true
+                  annotations: { }
+              replica:
+                replicaCount: 3
+                configuration: ''
+                disableCommands:
+                  - FLUSHDB
+                  - FLUSHALL
+                command: [ ]
+                args: [ ]
+                preExecCmds: [ ]
+                extraFlags: [ ]
+                extraEnvVars: [ ]
+                extraEnvVarsCM: ''
+                extraEnvVarsSecret: ''
+                externalMaster:
+                  enabled: false
+                  host: ''
+                  port: 6379
+                containerPorts:
+                  redis: 6379
+                startupProbe:
+                  enabled: true
+                  initialDelaySeconds: 10
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+                  successThreshold: 1
+                  failureThreshold: 22
+                livenessProbe:
+                  enabled: true
+                  initialDelaySeconds: 20
+                  periodSeconds: 5
+                  timeoutSeconds: 5
+                  successThreshold: 1
+                  failureThreshold: 5
+                readinessProbe:
+                  enabled: true
+                  initialDelaySeconds: 20
+                  periodSeconds: 5
+                  timeoutSeconds: 1
+                  successThreshold: 1
+                  failureThreshold: 5
+                customStartupProbe: { }
+                customLivenessProbe: { }
+                customReadinessProbe: { }
+                resources:
+                  limits: { }
+                  requests: { }
+                podSecurityContext:
+                  enabled: true
+                  fsGroup: 1001
+                containerSecurityContext:
+                  enabled: true
+                  runAsUser: 1001
+                schedulerName: ''
+                updateStrategy:
+                  type: RollingUpdate
+                minReadySeconds: 0
+                priorityClassName: ''
+                podManagementPolicy: ''
+                hostAliases: [ ]
+                podLabels: { }
+                podAnnotations: { }
+                shareProcessNamespace: false
+                podAffinityPreset: ''
+                podAntiAffinityPreset: soft
+                nodeAffinityPreset:
+                  type: ''
+                  key: ''
+                  values: [ ]
+                affinity: { }
+                nodeSelector: { }
+                tolerations: [ ]
+                topologySpreadConstraints: [ ]
+                dnsPolicy: ''
+                dnsConfig: { }
+                lifecycleHooks: { }
+                extraVolumes: [ ]
+                extraVolumeMounts: [ ]
+                sidecars: [ ]
+                initContainers: [ ]
+                persistence:
+                  enabled: true
+                  medium: ''
+                  sizeLimit: ''
+                  path: /data
+                  subPath: ''
+                  subPathExpr: ''
+                  storageClass: alicloud-disk-topology-alltype
+                  accessModes:
+                    - ReadWriteOnce
+                  size: 20Gi
+                  annotations: { }
+                  labels: { }
+                  selector: { }
+                  dataSource: { }
+                  existingClaim: ''
+                service:
+                  type: ClusterIP
+                  ports:
+                    redis: 6379
+                  nodePorts:
+                    redis: ''
+                  externalTrafficPolicy: Cluster
+                  internalTrafficPolicy: Cluster
+                  extraPorts: [ ]
+                  clusterIP: ''
+                  loadBalancerIP: ''
+                  loadBalancerSourceRanges: [ ]
+                  annotations: { }
+                  sessionAffinity: None
+                  sessionAffinityConfig: { }
+                terminationGracePeriodSeconds: 30
+                autoscaling:
+                  enabled: false
+                  minReplicas: 1
+                  maxReplicas: 11
+                  targetCPU: ''
+                  targetMemory: ''
+                serviceAccount:
+                  create: false
+                  name: ''
+                  automountServiceAccountToken: true
+                  annotations: { }
+              sentinel:
+                enabled: false
+                image:
+                  registry: docker.io
+                  repository: bitnami/redis-sentinel
+                  tag: 7.0.11-debian-11-r10
+                  digest: ''
+                  pullPolicy: IfNotPresent
+                  pullSecrets: [ ]
+                  debug: false
+                annotations: { }
+                masterSet: mymaster
+                quorum: 2
+                getMasterTimeout: 220
+                automateClusterRecovery: false
+                redisShutdownWaitFailover: true
+                downAfterMilliseconds: 60000
+                failoverTimeout: 180000
+                parallelSyncs: 1
+                configuration: ''
+                command: [ ]
+                args: [ ]
+                preExecCmds: [ ]
+                extraEnvVars: [ ]
+                extraEnvVarsCM: ''
+                extraEnvVarsSecret: ''
+                externalMaster:
+                  enabled: false
+                  host: ''
+                  port: 6379
+                containerPorts:
+                  sentinel: 26379
+                startupProbe:
+                  enabled: true
+                  initialDelaySeconds: 10
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+                  successThreshold: 1
+                  failureThreshold: 22
+                livenessProbe:
+                  enabled: true
+                  initialDelaySeconds: 20
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+                  successThreshold: 1
+                  failureThreshold: 6
+                readinessProbe:
+                  enabled: true
+                  initialDelaySeconds: 20
+                  periodSeconds: 5
+                  timeoutSeconds: 1
+                  successThreshold: 1
+                  failureThreshold: 6
+                customStartupProbe: { }
+                customLivenessProbe: { }
+                customReadinessProbe: { }
+                persistence:
+                  enabled: false
+                  storageClass: alicloud-disk-topology-alltype
+                  accessModes:
+                    - ReadWriteOnce
+                  size: 20Gi
+                  annotations: { }
+                  labels: { }
+                  selector: { }
+                  dataSource: { }
+                  medium: ''
+                  sizeLimit: ''
+                resources:
+                  limits: { }
+                  requests: { }
+                containerSecurityContext:
+                  enabled: true
+                  runAsUser: 1001
+                lifecycleHooks: { }
+                extraVolumes: [ ]
+                extraVolumeMounts: [ ]
+                service:
+                  type: ClusterIP
+                  ports:
+                    redis: 6379
+                    sentinel: 26379
+                  nodePorts:
+                    redis: ''
+                    sentinel: ''
+                  externalTrafficPolicy: Cluster
+                  extraPorts: [ ]
+                  clusterIP: ''
+                  loadBalancerIP: ''
+                  loadBalancerSourceRanges: [ ]
+                  annotations: { }
+                  sessionAffinity: None
+                  sessionAffinityConfig: { }
+                  headless:
+                    annotations: { }
+                terminationGracePeriodSeconds: 30
+              serviceBindings:
+                enabled: false
+              networkPolicy:
+                enabled: false
+                allowExternal: true
+                extraIngress: [ ]
+                extraEgress: [ ]
+                ingressNSMatchLabels: { }
+                ingressNSPodMatchLabels: { }
+              podSecurityPolicy:
+                create: false
+                enabled: false
+              rbac:
+                create: false
+                rules: [ ]
+              serviceAccount:
+                create: true
+                name: ''
+                automountServiceAccountToken: true
+                annotations: { }
+              pdb:
+                create: false
+                minAvailable: 1
+                maxUnavailable: ''
+              tls:
+                enabled: false
+                authClients: true
+                autoGenerated: false
+                existingSecret: ''
+                certificatesSecret: ''
+                certFilename: ''
+                certKeyFilename: ''
+                certCAFilename: ''
+                dhParamsFilename: ''
+              metrics:
+                enabled: false
+                image:
+                  registry: docker.io
+                  repository: bitnami/redis-exporter
+                  tag: 1.50.0-debian-11-r13
+                  digest: ''
+                  pullPolicy: IfNotPresent
+                  pullSecrets: [ ]
+                startupProbe:
+                  enabled: false
+                  initialDelaySeconds: 10
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+                  successThreshold: 1
+                  failureThreshold: 5
+                livenessProbe:
+                  enabled: true
+                  initialDelaySeconds: 10
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+                  successThreshold: 1
+                  failureThreshold: 5
+                readinessProbe:
+                  enabled: true
+                  initialDelaySeconds: 5
+                  periodSeconds: 10
+                  timeoutSeconds: 1
+                  successThreshold: 1
+                  failureThreshold: 3
+                customStartupProbe: { }
+                customLivenessProbe: { }
+                customReadinessProbe: { }
+                command: [ ]
+                redisTargetHost: localhost
+                extraArgs: { }
+                extraEnvVars: [ ]
+                containerSecurityContext:
+                  enabled: true
+                  runAsUser: 1001
+                extraVolumes: [ ]
+                extraVolumeMounts: [ ]
+                resources:
+                  limits: { }
+                  requests: { }
+                podLabels: { }
+                podAnnotations:
+                  prometheus.io/scrape: 'true'
+                  prometheus.io/port: '9121'
+                service:
+                  type: ClusterIP
+                  port: 9121
+                  externalTrafficPolicy: Cluster
+                  extraPorts: [ ]
+                  loadBalancerIP: ''
+                  loadBalancerSourceRanges: [ ]
+                  annotations: { }
+                  clusterIP: ''
+                serviceMonitor:
+                  enabled: false
+                  namespace: ''
+                  interval: 30s
+                  scrapeTimeout: ''
+                  relabellings: [ ]
+                  metricRelabelings: [ ]
+                  honorLabels: false
+                  additionalLabels: { }
+                  podTargetLabels: [ ]
+                prometheusRule:
+                  enabled: false
+                  namespace: ''
+                  additionalLabels: { }
+                  rules: [ ]
+              volumePermissions:
+                enabled: false
+                image:
+                  registry: docker.io
+                  repository: bitnami/bitnami-shell
+                  tag: 11-debian-11-r118
+                  digest: ''
+                  pullPolicy: IfNotPresent
+                  pullSecrets: [ ]
+                resources:
+                  limits: { }
+                  requests: { }
+                containerSecurityContext:
+                  runAsUser: 0
+              sysctl:
+                enabled: false
+                image:
+                  registry: docker.io
+                  repository: bitnami/bitnami-shell
+                  tag: 11-debian-11-r118
+                  digest: ''
+                  pullPolicy: IfNotPresent
+                  pullSecrets: [ ]
+                command: [ ]
+                mountHostSys: false
+                resources:
+                  limits: { }
+                  requests: { }
+              useExternalDNS:
+                enabled: false
+                suffix: ''
+                annotationKey: external-dns.alpha.kubernetes.io/
+                additionalAnnotations: { }
+            externalAliyunOSS:
+              enabled: false
+              bucketName: your-bucket-name
+              accessKey: your-access-key
+              secretKey: your-secret-key
+              endpoint: https://oss-ap-southeast-1-internal.aliyuncs.com
+              region: ap-southeast-1
+              authVersion: v4
+              path: your-path
+            externalS3:
+              enabled: false
+              endpoint: https://xxx.r2.cloudflarestorage.com
+              accessKey: ak-difyai
+              secretKey: sk-difyai
+              useSSL: false
+              bucketName: difyai
+              rootPath: ''
+              useIAM: false
+              iamEndpoint: ''
+            externalAzureBlobStorage:
+              enabled: false
+              url: https://<your_account_name>.blob.core.windows.net
+              account: https://xxx.r2.cloudflarestorage.com
+              key: difyai
+              container: difyai-container
+            externalPostgres:
+              enabled:
+                Fn::If:
+                  - CreateDataBaseConditions
+                  - true
+                  - false
+              username:
+                Ref: PostgresSQLUserName
+              password:
+                Ref: PostgresSQLPassword
+              address:
+                Fn::If:
+                  - CreateDataBaseConditions
+                  - Fn::GetAtt:
+                      - PostgreSQLInstance
+                      - InnerConnectionString
+                  - ''
+              port: 5432
+              dbName: dify
+              maxOpenConns: 20
+              maxIdleConns: 5
+            externalRedis:
+              enabled:
+                Fn::If:
+                  - CreateRedisConditions
+                  - true
+                  - false
+              host:
+                Fn::If:
+                  - CreateRedisConditions
+                  - Fn::GetAtt:
+                      - RedisInstance
+                      - ConnectionDomain
+                  - ''
+              port: 6379
+              username: ''
+              password:
+                Ref: RedisInstancePassword
+              useSSL: false
+            externalWeaviate:
+              enabled: false
+              endpoint: http://weaviate:8080
+              apiKey: your-weaviate-api-key
+            externalQdrant:
+              enabled: false
+              endpoint: https://your-qdrant-cluster-url.qdrant.tech/
+              apiKey: ak-difyai
+              timeout: 20
+              grpc:
+                enabled: false
+                port: 6334
+            externalMilvus:
+              enabled: false
+              uri: http://milvus.example:19530
+              token: your-milvus-token
+              user: user
+              password: Milvus
+            externalPgvector:
+              enabled: false
+              host: gp-****-master.gpdb.rds.aliyuncs.com
+              port: 5432
+              user: user
+              password: '****'
+              dbName: dify
+            externalAnalyticDB:
+              enabled:
+                Fn::If:
+                  - CreateADBConditions
+                  - true
+                  - false
+              accessKey:
+                Ref: AccessKeyID
+              secretKey:
+                Ref: AccessKeySecret
+              region:
+                Ref: ALIYUN::Region
+              instanceId:
+                Fn::If:
+                  - CreateADBConditions
+                  - Fn::GetAtt:
+                      - ADBPGInstance
+                      - DBInstanceId
+                  - ''
+              account:
+                Ref: ADBPGAccount
+              accountPassword:
+                Ref: ADBPGPassword
+              namespace: dify
+              namespacePassword: difypassword
+  NginxIngressResources:
+    Type: DATASOURCE::CS::ClusterApplicationResources
+    Condition: CreateAck
+    DependsOn:
+      - Sleep
+    Properties:
+      Namespace: kube-system
+      Kind: Service
+      JsonPath: $.status.loadBalancer.ingress[0].ip
+      ClusterId:
+        Fn::GetAtt:
+          - AckModule
+          - ClusterId
+      Name: nginx-ingress-lb
 Outputs:
   Dify访问页面:
     Label: Dify访问页面
-    Value: '******'
-  使用说明:
-    Label: Dify访问说明
-    Value: '******'
+    Condition: CreateAck
+    Value:
+      Fn::Sub:
+        - ${Protocol}://${Address}/install
+        - Protocol:
+            Fn::If:
+              - EnableTLSConfigConditions
+              - https
+              - http
+          Address:
+            Ref: DomainAddress
+  请配置到域名解析或hosts中:
+    Label: 请配置到域名解析或hosts中
+    Condition: CreateAck
+    Value:
+      Fn::Sub:
+        - ${IpAddress} ${Address}
+        - IpAddress:
+            Fn::Select:
+              - 0
+              - Fn::GetAtt:
+                  - NginxIngressResources
+                  - Response
+          Address:
+            Ref: DomainAddress
+  请到ACK集群中配置服务访问:
+    Label: 请到ACK集群中配置服务访问
+    Condition: ExistedAck
+    Value: 为ACK集群中dify-system命名空间下的Service:ack-dify 配置服务访问，可通过配置负载均衡、或者Ingress的方式开启公网访问。详情请参考部署说明文档。
 Metadata:
   ALIYUN::ROS::Interface:
     ParameterGroups:
       - Parameters:
-          - PayType
-          - PayPeriodUnit
-          - PayPeriod
-        Label:
-          default:
-            en: PayType Configuration
-            zh-cn: 付费类型配置
-      - Parameters:
+          - AckOptions
+          - ClusterId
           - InstanceType
+          - WorkerSystemDiskCategory
+          - WorkerSystemDiskSize
           - InstancePassword
-          - ServiceCidr
+          - AutoScalingOption
+          - WorkerInstanceCount
+          - WorkerInstanceMinCount
+          - WorkerInstanceMaxCount
           - AckNetworkPlugin
+          - ServiceCidr
           - PodCidr
         Label:
           default:
@@ -662,11 +2577,20 @@ Metadata:
             zh-cn: 基础配置
             en: Basic Configuration
       - Parameters:
+          - PayType
+          - PayPeriodUnit
+          - PayPeriod
+        Label:
+          default:
+            en: PayType Configuration
+            zh-cn: 付费类型配置
+      - Parameters:
           - DomainAddress
           - EnableTLSConfig
           - TLSCert
           - TLSSecret
           - HPAOption
+          - HelmValues
         Label:
           default:
             zh-cn: 服务配置

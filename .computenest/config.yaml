@@ -176,11 +176,11 @@ ImageBuilder:
         set -xe
 
         function clean_log(){
-            rm -fv /usr/local/aegis/aegis_update/data/data.[0-9]
-            rm -fv /usr/local/aegis/aegis_client/aegis_*/data/data.[0-9]
+            #rm -fv /usr/local/aegis/aegis_update/data/data.[0-9]
+            #rm -fv /usr/local/aegis/aegis_client/aegis_*/data/data.[0-9]
 
-            rm -fv /usr/local/aegis/globalcfg/domaincfg.ini
-            rm -fv /opt/aegis/globalcfg/domaincfg.ini
+            #rm -fv /usr/local/aegis/globalcfg/domaincfg.ini
+            #rm -fv /opt/aegis/globalcfg/domaincfg.ini
 
             rm -rf /var/log/anaconda/*
             rm -rf /var/log/ecsgo.log*
