@@ -30,9 +30,11 @@ Artifact:
 ImageBuilder:
   EcsImage:
     RegionId: ap-southeast-1
-    SourceImageId: centos_7_9_x64_20G_alibase_20240403.vhd
+    # 使用最新的LTS版本Alibaba Cloud Linux
+    SourceImageId: aliyun_3_x64_20G_alibase_20240819.vhd
+    SystemDiskSize: 20
     InstanceType: ecs.c6.large
-    InternetMaxBandwidthOut: 5
+    InternetMaxBandwidthOut: 10
     CommandType: RunShellScript
     Timeout: 10800
     Tags: [ ]
