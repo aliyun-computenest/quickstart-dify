@@ -212,9 +212,9 @@ ImageBuilder:
 
             [ -d /etc/NetworkManager/system-connections ] && rm -fv /etc/NetworkManager/system-connections/*.nmconnection
 
-            if [[ ! -L /etc/udev/rules.d/70-persistent-net.rules ]];then
-                rm -rfv /etc/udev/rules.d/70-persistent-net.rules
-            fi
+            # if [[ ! -L /etc/udev/rules.d/70-persistent-net.rules ]];then
+            #    rm -rfv /etc/udev/rules.d/70-persistent-net.rules
+            # fi
 
             sync
             sync
