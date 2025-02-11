@@ -159,7 +159,6 @@ ImageBuilder:
 
         chmod 0755 /usr/local/bin/startup.sh /usr/local/bin/app-init.sh
         systemctl enable app-init.service
-        systemctl start app-init.service
 
         # 安装云监控Agent
         ARGUS_VERSION=3.5.7 /bin/bash -c "$(curl -sS https://cms-agent-ap-southeast-1.oss-ap-southeast-1-internal.aliyuncs.com/Argus/agent_install_ecs-1.7.sh)" 2>&1
