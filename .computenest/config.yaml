@@ -40,33 +40,7 @@ ImageBuilder:
     Tags: [ ]
     CommandContent: |-
         #!/bin/bash
-        # 关闭基础镜像非必要服务，降低基础服务资源占用
-        systemctl stop systemd-resolved.service
-        systemctl disable systemd-resolved.service
-        systemctl stop rpcbind.socket
-        systemctl stop rpcbind.service
-        systemctl disable rpcbind.service
-        systemctl disable rpcbind.socket
-        systemd-analyze blame
-
-        # 关闭防火墙
-        systemctl disable firewalld
-        systemctl stop firewalld
-
-        # 关闭update-motd 服务
-        systemctl disable update-motd.service
-        systemctl stop update-motd.service
-
-        systemctl stop systemd-resolved.service
-        systemctl disable systemd-resolved.service
-        systemctl stop rpcbind.socket
-        systemctl stop rpcbind.service
-        systemctl disable rpcbind.service
-        systemctl disable rpcbind.socket
-
         # 升级基础组件：
-        dnf upgrade-minimal
-        # 安装基础组件
         yum check-update
         yum -y upgrade --security
         yum -y upgrade-minimal
@@ -74,20 +48,16 @@ ImageBuilder:
         # 安装docker-ce
         yum-config-manager --add-repo http://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
         yum makecache
-        yum install -y wget curl unzip git jq
-        yum install -y docker-ce
+        yum install -y curl git docker-ce
         systemctl start docker
 
         # 下载dify
-        cd /root/
+        cd /root
         git clone https://github.com/langgenius/dify.git
-        cd dify/docker
-        cp .env.example .env
+        cp dify/docker/.env.example dify/docker/.env
         docker compose up -d
         sleep 300
         docker compose down
-
-        cd /root
 
         cat > /usr/lib/systemd/system/app-init.service << EOF
         [Unit]
@@ -172,7 +142,21 @@ ImageBuilder:
         #  4. 清理缓存                                     #
         ###################################################
 
-        set -xe
+        function disable_services(){
+          # 关闭基础镜像非必要服务，降低基础服务资源占用
+          # 关闭防火墙
+          systemctl disable firewalld
+          systemctl stop firewalld
+          # 关闭update-motd 服务
+          systemctl disable update-motd.service
+          systemctl stop update-motd.service
+          systemctl stop systemd-resolved.service
+          systemctl disable systemd-resolved.service
+          systemctl stop rpcbind.socket
+          systemctl stop rpcbind.service
+          systemctl disable rpcbind.service
+          systemctl disable rpcbind.socket
+        }
 
         function clean_log(){
             #rm -fv /usr/local/aegis/aegis_update/data/data.[0-9]
@@ -272,6 +256,7 @@ ImageBuilder:
             > /root/.bash_history
         }
 
+        disable_services
         clean_source_cache
         clean_log
         reset_sshd_cfg
