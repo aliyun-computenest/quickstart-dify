@@ -55,9 +55,11 @@ ImageBuilder:
         cd /root
         git clone https://github.com/langgenius/dify.git
         cp dify/docker/.env.example dify/docker/.env
+        cd dify/docker
         docker compose up -d
         sleep 300
         docker compose down
+        cd /root
 
         cat > /usr/lib/systemd/system/app-init.service << EOF
         [Unit]
