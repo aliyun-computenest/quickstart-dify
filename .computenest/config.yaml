@@ -210,9 +210,9 @@ ImageBuilder:
             sed -i "/debug/d" /etc/hosts
 
             # Clean up useless nameservers to prevent cloudinit local domain name resolution timeout
-            sed -i "/nameserver/d" $(realpath /etc/resolv.conf)
+            # sed -i "/nameserver/d" $(realpath /etc/resolv.conf)
 
-            [ -d /etc/NetworkManager/system-connections ] && rm -fv /etc/NetworkManager/system-connections/*.nmconnection
+            # [ -d /etc/NetworkManager/system-connections ] && rm -fv /etc/NetworkManager/system-connections/*.nmconnection
 
             # if [[ ! -L /etc/udev/rules.d/70-persistent-net.rules ]];then
             #    rm -rfv /etc/udev/rules.d/70-persistent-net.rules
