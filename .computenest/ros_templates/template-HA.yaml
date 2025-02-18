@@ -906,48 +906,6 @@ Parameters:
       Fn::Equals:
         - ExternalCloudDatabase
         - ${ADBOption}
-  AccessKeyID:
-    Type: String
-    Default: Null
-    NoEcho: true
-    Description:
-      en: To access AnalyticDB, you are advised to use the AK/SK of the Ram subaccount. The AliyunGPDBFullAccess permission must be configured for the Ram subaccount.
-      zh-cn: 访问AnalyticDB使用,建议使用Ram子账号的AK/SK,Ram子账号需要配置AliyunGPDBFullAccess权限。
-    AllowedPattern: '[0-9a-zA-Z]+$'
-    Label:
-      en: AccessKey ID
-      zh-cn: AccessKey ID
-    Required:
-      Fn::Equals:
-        - ExternalCloudDatabase
-        - ${ADBOption}
-    AssociationPropertyMetadata:
-      Visible:
-        Condition:
-          Fn::Equals:
-            - ExternalCloudDatabase
-            - ${ADBOption}
-  AccessKeySecret:
-    Type: String
-    Default: Null
-    NoEcho: true
-    Description:
-      en: To access AnalyticDB, you are advised to use the AK/SK of the Ram subaccount. The AliyunGPDBFullAccess permission must be configured for the Ram subaccount.
-      zh-cn: 访问AnalyticDB使用,建议使用Ram子账号的AK/SK,Ram子账号需要配置AliyunGPDBFullAccess权限。
-    AllowedPattern: '[0-9a-zA-Z]+$'
-    Label:
-      en: AccessKey Secret
-      zh-cn: AccessKey Secret
-    Required:
-      Fn::Equals:
-        - ExternalCloudDatabase
-        - ${ADBOption}
-    AssociationPropertyMetadata:
-      Visible:
-        Condition:
-          Fn::Equals:
-            - ExternalCloudDatabase
-            - ${ADBOption}
   HelmValues:
     Type: Json
     Label:
@@ -958,10 +916,10 @@ Parameters:
     Default:
       image:
         api:
-          tag: 0.14.2
+          tag: 0.15.3
           pullPolicy: IfNotPresent
         web:
-          tag: 0.14.2
+          tag: 0.15.3
           pullPolicy: IfNotPresent
         sandbox:
           tag: 0.2.10
@@ -1087,6 +1045,65 @@ Resources:
             - Fn::GetAtt:
                 - AckModule
                 - ClusterVpcCidr
+  OSSBucket:
+    Type: 'ALIYUN::OSS::Bucket'
+    Properties:
+      DeletionForce: true
+      RedundancyType: LRS
+      CORSConfiguration:
+        CORSRule:
+        - AllowedHeader: ['*']
+          AllowedMethod: [HEAD, GET, PUT, POST, DELETE]
+          AllowedOrigin: ['*']
+      BucketName:
+        Fn::Join:
+          - '-'
+          - - 'dify'
+            - Ref: ALIYUN::StackName
+  SuperOpsUser:
+    Type: 'ALIYUN::RAM::User'
+    Properties:
+      UserName:
+        'Fn::Join':
+        - '-'
+        - - SuperOps
+          - Ref: ALIYUN::StackName
+      Policies:
+      - PolicyName:
+          'Fn::Join':
+          - '-'
+          - - DifySuperOpsPolicy
+            - Ref: 'ALIYUN::StackName'
+        PolicyDocument:
+          Version: '1'
+          Statement:
+          - Effect: Allow
+            Action:
+            - 'gpdb:*'
+            Resource:
+            - '*'
+          - Effect: Allow
+            Action:
+            - '*'
+            Resource:
+            - 'Fn::Sub':
+              - 'acs:oss:*:*:${BucketName}*'
+              - BucketName:
+                  Fn::Join:
+                    - '-'
+                    - - 'dify'
+                      - Ref: ALIYUN::StackName
+      PolicyAttachments:
+        System:
+        - AliyunSTSAssumeRoleAccess
+        - AliyunRAMReadOnlyAccess
+  AccessKey:
+    Type: 'ALIYUN::RAM::AccessKey'
+    Properties:
+      UserName:
+        'Fn::GetAtt':
+        - SuperOpsUser
+        - UserName
   DifyDataBase:
     Type: ALIYUN::RDS::Database
     Condition: CreateDataBaseConditions
@@ -1289,19 +1306,19 @@ Resources:
         Fn::If:
           - EnableHPAConditions
           - - Kind: Deployment
-              Name: ack-dify
+              Name: ack-dify-api
               Namespace: dify-system
               JsonPath: $.status.readyReplicas
-              Operator: NotEquals
+              Operator: Equals
               Value: '2'
               ValueType: Json
               FirstMatch: true
               Timeout: 6000
           - - Kind: Deployment
-              Name: ack-dify
+              Name: ack-dify-api
               Namespace: dify-system
               JsonPath: $.status.readyReplicas
-              Operator: NotEquals
+              Operator: Equals
               Value: '1'
               ValueType: Json
               FirstMatch: true
@@ -2352,12 +2369,27 @@ Resources:
                 annotationKey: external-dns.alpha.kubernetes.io/
                 additionalAnnotations: { }
             externalAliyunOSS:
-              enabled: false
-              bucketName: your-bucket-name
-              accessKey: your-access-key
-              secretKey: your-secret-key
-              endpoint: https://oss-ap-southeast-1-internal.aliyuncs.com
-              region: ap-southeast-1
+              enabled: true
+              endpoint:
+                Fn::Sub:
+                  - 'oss-${RegionId}.aliyuncs.com'
+                  - RegionId:
+                      Ref: ALIYUN::Region
+              bucketName:
+                Fn::Join:
+                  - '-'
+                  - - 'dify'
+                    - Ref: ALIYUN::StackName
+              accessKey:
+                Fn::GetAtt:
+                  - AccessKey
+                  - AccessKeyId
+              secretKey:
+                Fn::GetAtt:
+                  - AccessKey
+                  - AccessKeySecret
+              region:
+                Ref: ALIYUN::Region
               authVersion: v4
               path: your-path
             externalS3:
@@ -2447,9 +2479,13 @@ Resources:
                   - true
                   - false
               accessKey:
-                Ref: AccessKeyID
+                Fn::GetAtt:
+                  - AccessKey
+                  - AccessKeyId
               secretKey:
-                Ref: AccessKeySecret
+                Fn::GetAtt:
+                  - AccessKey
+                  - AccessKeySecret
               region:
                 Ref: ALIYUN::Region
               instanceId:
@@ -2556,8 +2592,6 @@ Metadata:
           - ADBPGSegmentStorage
           - ADBPGAccount
           - ADBPGPassword
-          - AccessKeyID
-          - AccessKeySecret
         Label:
           default:
             en: Vector Database Configuration
