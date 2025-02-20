@@ -49,28 +49,63 @@ ImageBuilder:
         yum-config-manager --add-repo http://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
         yum makecache
         yum install -y curl git docker-ce
-        systemctl start docker
+        mkdir -p /etc/docker/
+        echo '{
+            "default-address-pools": [
+                {
+                    "base": "10.255.0.0/16",
+                    "size": 24
+                }
+            ]
+        }' > /etc/docker/daemon.json
 
-        mkdir -p /root/ollama && cat > /root/ollama/docker-compose.yaml << EOF
-        services:
-          ollama:
-            volumes:
-              - ollama:/root/.ollama
-            container_name: ollama
-            pull_policy: if_not_present
-            tty: true
-            restart: unless-stopped
-            image: ollama/ollama:latest
-            ports:
-            - 11434:11434
-            environment:
-              OLLAMA_ORIGINS: "*"
-              OLLAMA_HOST: "0.0.0.0"
-        volumes:
-          ollama: {}
-        EOF
+        prefixChinaRegion="cn-"
+        region=$(curl -s http://100.100.100.200/latest/meta-data/region-id)
 
-        cd /root/ollama && docker compose up -d
+        if [[ ${region} == ${prefixChinaRegion}* && ${region} != "cn-hongkong" ]]; then
+          echo '{
+              "default-address-pools": [
+                  {
+                      "base": "10.255.0.0/16",
+                      "size": 24
+                  }
+              ],
+              "registry-mirrors": [
+                  "https://mirrors-ssl.aliyuncs.com/"
+              ]
+          }' > /etc/docker/daemon.json
+        fi
+
+        sudo systemctl enable --now docker.socket
+        sudo systemctl enable --now docker.service
+
+        mkdir -p /usr/local/applications/ && cd /usr/local/applications/
+        git clone https://github.com/langgenius/dify.git
+        cp dify/docker/.env.example dify/docker/.env
+        cd dify/docker
+        sed -i 's/dify-api:1.0.0/dify-api:latest/g' ./docker-compose.yaml
+        sed -i 's/dify-web:1.0.0/dify-web:latest/g' ./docker-compose.yaml
+        wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq
+        chmod +x /usr/bin/yq
+        yq eval '.services.ollama = {
+          "volumes": ["ollama:/root/.ollama"],
+          "container_name": "ollama",
+          "pull_policy": "if_not_present",
+          "tty": true,
+          "restart": "unless-stopped",
+          "image": "ollama/ollama:latest",
+          "ports": ["11434:11434"],
+          "environment": {
+            "OLLAMA_ORIGINS": "*",
+            "OLLAMA_HOST": "0.0.0.0"
+          }
+        }' ./docker-compose.yaml -i
+        yq eval '.volumes.ollama = {}' ./docker-compose.yaml -i
+
+        rm -rf /usr/bin/yq
+        docker compose up -d
+        sleep 300
+
         CONTAINER_ID=$(docker ps --filter "name=ollama" --format "{{.ID}}")
         docker exec -i "$CONTAINER_ID" /bin/bash -c "
           ollama pull deepseek-r1:1.5b;
@@ -79,109 +114,6 @@ ImageBuilder:
           ollama pull nomic-embed-text:latest;
           exit;
         "
-        docker compose down
-
-        # 下载dify
-        cd /root
-        git clone https://github.com/langgenius/dify.git
-        cp dify/docker/.env.example dify/docker/.env
-        cd dify/docker
-        sed -i 's/dify-api:1.0.0/dify-api:latest/g' ./docker-compose.yaml
-        sed -i 's/dify-web:1.0.0/dify-web:latest/g' ./docker-compose.yaml
-        docker compose up -d
-        sleep 300
-        docker compose down
-        cd /root
-
-        cat > /usr/lib/systemd/system/app-init.service << EOF
-        [Unit]
-        Description=Application init serivce
-        Wants=cloud-final.service
-        Requires=network-online.target
-        After=network-online.target cloud-final.service
-
-        [Service]
-        Type=oneshot
-        ExecStart=/usr/local/bin/app-init.sh
-        RemainAfterExit=false
-        KillMode=control-group
-        Restart=no
-        StandardOutput=file:/var/log/app-init.log
-        StandardError=file:/var/log/app-init.log
-
-        [Install]
-        WantedBy=multi-user.target
-        EOF
-
-
-        cat > /usr/local/bin/app-init.sh << EOF
-        #!/bin/bash
-
-        # 初始化应用......
-        echo "$(date +"%Y-%m-%d %H:%M:%S") init applications......"
-
-        if sh /usr/local/bin/startup.sh; then
-          echo "$(date +"%Y-%m-%d %H:%M:%S") init applications successfully"
-        else
-          echo "$(date +"%Y-%m-%d %H:%M:%S") init applications failed"
-        fi
-
-        # 执行成功后服务自毁, 避免再次执行，勿动
-        rm -rf /usr/local/bin/startup.sh
-        rm -- "$0"
-        systemctl disable app-init.service
-        rm -rf /etc/systemd/system/app-init.service /usr/lib/systemd/system/app-init.service
-        systemctl daemon-reload
-        EOF
-
-        cat > /usr/local/bin/startup.sh << 'EOF'
-        #!/bin/bash
-
-        set -e
-
-        cat > /etc/systemd/system/ollama.service <<Ollama_EOF
-        [Unit]
-        Description=Dify Application Service
-        Requires=docker.service
-        After=docker.service
-
-        [Service]
-        Type=oneshot
-        RemainAfterExit=yes
-        WorkingDirectory=/root/ollama
-        ExecStart=/usr/bin/docker compose up -d
-        ExecStop=/usr/bin/docker compose down
-        TimeoutStartSec=0
-
-        [Install]
-        WantedBy=multi-user.target
-        Ollama_EOF
-
-        cat > /etc/systemd/system/dify.service <<DIFY_EOF
-        [Unit]
-        Description=Dify Application Service
-        Requires=docker.service
-        After=docker.service
-
-        [Service]
-        Type=oneshot
-        RemainAfterExit=yes
-        WorkingDirectory=/root/dify/docker
-        ExecStart=/usr/bin/docker compose up -d
-        ExecStop=/usr/bin/docker compose down
-        TimeoutStartSec=0
-
-        [Install]
-        WantedBy=multi-user.target
-        DIFY_EOF
-
-        sudo systemctl enable --now docker.service
-        sudo systemctl enable --now ollama.service
-        sudo systemctl enable --now dify.service
-        EOF
-
-        chmod 0755 /usr/local/bin/startup.sh /usr/local/bin/app-init.sh
-        systemctl enable app-init.service
 
         # 安装云监控Agent
         ARGUS_VERSION=3.5.7 /bin/bash -c "$(curl -sS https://cms-agent-ap-southeast-1.oss-ap-southeast-1-internal.aliyuncs.com/Argus/agent_install_ecs-1.7.sh)" 2>&1
