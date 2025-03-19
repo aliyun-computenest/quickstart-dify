@@ -1,6 +1,6 @@
 ROSTemplateFormatVersion: '2015-09-01'
 Description:
-  zh-cn: 创建托管Kubernetes集群，配置VPC、节点池、HPA及日志服务，实现容器应用的自动伸缩与监控。
+  zh-cn: 创建托管Kubernetes集群，配置VPC、节点池、HPA及日志服务，实现Dify应用的自动伸缩与监控。
   en: Create a managed Kubernetes cluster, configure Virtual Private Cloud (VPC), node pools, Horizontal Pod Autoscaler (HPA), and logging services to enable automatic scaling and monitoring of containerized applications.
 Locals:
   Repo:
@@ -38,6 +38,14 @@ Conditions:
     Fn::Equals:
       - Ref: AckOptions
       - ExistCs
+  UserChooseVpc:
+    Fn::Or:
+      - Fn::Equals:
+        - Ref: AckOptions
+        - ExistCs
+      - Fn::Equals:
+        - Ref: VpcOption
+        - ExistingVPC
 Parameters:
   AckOptions:
     AssociationPropertyMetadata:
@@ -453,47 +461,44 @@ Parameters:
     AssociationPropertyMetadata:
       ExclusiveTo:
         - ZoneId2
-      Visible:
-        Condition:
-          Fn::Equals:
-            - ${AckOptions}
-            - NewAck
     Label:
       en: Availability Zone
       zh-cn: 可用区1
-    Default: ''
   ZoneId2:
     Type: String
     AssociationProperty: ALIYUN::ECS::Instance::ZoneId
     AssociationPropertyMetadata:
       ExclusiveTo:
         - ZoneId1
-      Visible:
-        Condition:
-          Fn::Equals:
-            - ${AckOptions}
-            - NewAck
     Label:
       en: Availability Zone
       zh-cn: 可用区2
-    Default: ''
   VpcId:
     Type: String
     Label:
       en: VPC ID
       zh-cn: 专有网络VPC实例ID
+    Description: <br> <font color='red'>如果选择“已有容器集群”, 此VPC务必选择有容器集群所在的VPC<br><font>
     AssociationProperty: ALIYUN::ECS::VPC::VPCId
     Required:
-      Fn::Equals:
-        - ExistingVPC
-        - ${VpcOption}
+      Fn::Or:
+        - Fn::Equals:
+            - ${AckOptions}
+            - ExistCs
+        - Fn::Equals:
+            - ${VpcOption}
+            - ExistingVPC
     Default: ''
     AssociationPropertyMetadata:
       Visible:
         Condition:
-          Fn::Equals:
-            - ExistingVPC
-            - ${VpcOption}
+          Fn::Or:
+            - Fn::Equals:
+                - ${AckOptions}
+                - ExistCs
+            - Fn::Equals:
+                - ${VpcOption}
+                - ExistingVPC
   VSwitchId1:
     Type: String
     Label:
@@ -502,17 +507,25 @@ Parameters:
     Default: ''
     AssociationProperty: ALIYUN::ECS::VSwitch::VSwitchId
     Required:
-      Fn::Equals:
-        - ExistingVPC
-        - ${VpcOption}
+      Fn::Or:
+        - Fn::Equals:
+            - ${AckOptions}
+            - ExistCs
+        - Fn::Equals:
+            - ${VpcOption}
+            - ExistingVPC
     AssociationPropertyMetadata:
       VpcId: VpcId
       ZoneId: ZoneId1
       Visible:
         Condition:
-          Fn::Equals:
-            - ExistingVPC
-            - ${VpcOption}
+          Fn::Or:
+            - Fn::Equals:
+                - ${AckOptions}
+                - ExistCs
+            - Fn::Equals:
+                - ${VpcOption}
+                - ExistingVPC
   VSwitchId2:
     Type: String
     Label:
@@ -521,17 +534,25 @@ Parameters:
     Default: ''
     AssociationProperty: ALIYUN::ECS::VSwitch::VSwitchId
     Required:
-      Fn::Equals:
-        - ExistingVPC
-        - ${VpcOption}
+      Fn::Or:
+        - Fn::Equals:
+            - ${AckOptions}
+            - ExistCs
+        - Fn::Equals:
+            - ${VpcOption}
+            - ExistingVPC
     AssociationPropertyMetadata:
       VpcId: VpcId
       ZoneId: ZoneId2
       Visible:
         Condition:
-          Fn::Equals:
-            - ExistingVPC
-            - ${VpcOption}
+          Fn::Or:
+            - Fn::Equals:
+                - ${AckOptions}
+                - ExistCs
+            - Fn::Equals:
+                - ${VpcOption}
+                - ExistingVPC
   ClusterId:
     AssociationPropertyMetadata:
       Visible:
@@ -540,6 +561,8 @@ Parameters:
             - ${AckOptions}
             - ExistCs
       RegionId: ${RegionId}
+      ClusterType: ManagedKubernetes
+      Profile: Default
     Description: 部署应用程序的ACK集群ID
     Default: Null
     Required: true
@@ -670,8 +693,8 @@ Parameters:
     Default: Null
     Type: String
     Description:
-      zh-cn: 长度8-30，必须包含大写字母、小写字母、数字、特殊符号三个；<br>特殊字符包括：（）'~！@#$%^&*_-+=|{}[]:;'<>,.?/
-      en: The 8-30 long login password of instance, consists of the uppercase, lowercase letter and number. <br> special characters include（）'~！@#$%^&*_-+=|{}[]:;'<>,.?/.
+      zh-cn: 长度8-30，必须包含大写字母、小写字母、数字、特殊符号三个；<br>特殊字符包括：!@#$%^&*()_+-=
+      en: The 8-30 long login password of instance, consists of the uppercase, lowercase letter and number. <br> special characters include!@#$%^&*()_+-=
     Label:
       zh-cn: Redis实例密码
       en: Redis Instance Password
@@ -681,9 +704,9 @@ Parameters:
         - ExternalCloudDatabase
         - ${RedisOption}
     ConstraintDescription:
-      en: Length 8-30, must contain three(Capital letters, lowercase letters, numbers, ()!@#%&*-+=Special symbol in)
-      zh-cn: 长度8-30，必须包含三项（大写字母、小写字母、数字、 ()!@#%&*-+=中的特殊符号）
-    AllowedPattern: '[0-9A-Za-z\_\-\&:;''<>,=%`~!@#\(\)\$\^\*\+\|\{\}\[\]\.\?\/]+$'
+      en: Length 8-30, must contain three(Capital letters, lowercase letters, numbers,Special symbol in)
+      zh-cn: 长度8-30，必须包含三项（大写字母、小写字母、数字、 !@#$%^&*()_+-=中的特殊符号）
+    AllowedPattern: '^[0-9A-Za-z_!@#$%^&*()_+\-=\+]+$'
     MinLength: 8
     MaxLength: 30
     AssociationPropertyMetadata:
@@ -792,19 +815,19 @@ Parameters:
     NoEcho: true
     Type: String
     Description:
-      en: Server login password, Length 8-30, must contain three(Capital letters, lowercase letters, numbers, ()`~!@#$%^&*_-+=|{}[]:;'<>,.?/ Special symbol in)
-      zh-cn: 数据库访问密码,长度8-30，必须包含三项（大写字母、小写字母、数字、 ()`~!@#$%^&*_-+=|{}[]:;'<>,.?/ 中的特殊符号）
+      en: Server login password, Length 8-30, must contain three(Capital letters, lowercase letters, numbers, !@#$%^&*()_+-= Special symbol in)
+      zh-cn: 数据库访问密码,长度8-30，必须包含三项（大写字母、小写字母、数字、 !@#$%^&*()_+-= 中的特殊符号）
     Label:
       en: Instance Password
       zh-cn: PostgresSQL数据库密码
     ConstraintDescription:
-      en: Length 8-30, must contain three(Capital letters, lowercase letters, numbers, ()!@#%&*-+=Special symbol in)
-      zh-cn: 长度8-30，必须包含三项（大写字母、小写字母、数字、 ()!@#%&*-+=中的特殊符号）
+      en: Length 8-30, must contain three(Capital letters, lowercase letters, numbers, !@#$%^&*()_+-=Special symbol in)
+      zh-cn: 长度8-30，必须包含三项（大写字母、小写字母、数字、 !@#$%^&*()_+-=中的特殊符号）
     Required:
       Fn::Equals:
         - ExternalCloudDatabase
         - ${DatabaseOption}
-    AllowedPattern: '[0-9A-Za-z\_\-\&:;''<>,=%`~!@#\(\)\$\^\*\+\|\{\}\[\]\.\?\/]+$'
+    AllowedPattern: '^[0-9A-Za-z_!@#$%^&*()_+\-=\+]+$'
     MinLength: 8
     MaxLength: 30
     AssociationPropertyMetadata:
@@ -885,15 +908,15 @@ Parameters:
     NoEcho: true
     Type: String
     Description:
-      en: Server login password, Length 8-30, must contain three(Capital letters, lowercase letters, numbers, ()`~!@#$%^&*_-+=|{}[]:;'<>,.?/ Special symbol in)
-      zh-cn: 数据库访问密码,长度8-30，必须包含三项（大写字母、小写字母、数字、 ()`~!@#$%^&*_-+=|{}[]:;'<>,.?/ 中的特殊符号）
+      en: Server login password, Length 8-30, must contain three(Capital letters, lowercase letters, numbers, (!@#$%^&*()_+-=) Special symbol in)
+      zh-cn: 数据库访问密码,长度8-30，必须包含三项（大写字母、小写字母、数字、 (!@#$%^&*()_+-=) 中的特殊符号）
     Label:
       en: Instance Password
       zh-cn: ADBPG 数据库密码
     ConstraintDescription:
-      en: Length 8-30, must contain three(Capital letters, lowercase letters, numbers, ()!@#%&*-+=Special symbol in)
-      zh-cn: 长度8-30，必须包含三项（大写字母、小写字母、数字、 ()!@#%&*-+=中的特殊符号）
-    AllowedPattern: '[0-9A-Za-z\_\-\&:;''<>,=%`~!@#\(\)\$\^\*\+\|\{\}\[\]\.\?\/]+$'
+      en: Length 8-30, must contain three(Capital letters, lowercase letters, numbers,(!@#$%^&*()_+-=)Special symbol in)
+      zh-cn: 长度8-30，必须包含三项（大写字母、小写字母、数字、(!@#$%^&*()_+-=)中的特殊符号）
+    AllowedPattern: '^[0-9A-Za-z_!@#$%^&*()_+\-=\+]+$'
     MinLength: 8
     MaxLength: 30
     AssociationPropertyMetadata:
@@ -966,17 +989,21 @@ Resources:
       Period:
         Ref: PayPeriod
       VpcId:
-        Fn::GetAtt:
-          - AckModule
-          - ClusterVpcId
+        Fn::If:
+          - UserChooseVpc
+          - Ref: VpcId
+          - Fn::GetAtt:
+            - AckModule
+            - ClusterVpcId
       VSwitchId:
-        Fn::GetAtt:
-          - AckModule
-          - ClusterVSwitchId
+        Fn::If:
+          - UserChooseVpc
+          - Ref: VSwitchId1
+          - Fn::GetAtt:
+            - AckModule
+            - ClusterVSwitchId
       ZoneId:
-        Fn::GetAtt:
-          - AckModule
-          - ClusterZoneId
+        Ref: ZoneId1
       InstanceClass: redis.master.mid.default
       ShardCount: 2
       EngineVersion: '5.0'
@@ -1005,17 +1032,21 @@ Resources:
     Condition: CreateDataBaseConditions
     Properties:
       ZoneId:
-        Fn::GetAtt:
-          - AckModule
-          - ClusterZoneId
+         Ref: ZoneId1
       VpcId:
-        Fn::GetAtt:
-          - AckModule
-          - ClusterVpcId
+        Fn::If:
+          - UserChooseVpc
+          - Ref: VpcId
+          - Fn::GetAtt:
+            - AckModule
+            - ClusterVpcId
       VSwitchId:
-        Fn::GetAtt:
-          - AckModule
-          - ClusterVSwitchId
+        Fn::If:
+          - UserChooseVpc
+          - Ref: VSwitchId1
+          - Fn::GetAtt:
+            - AckModule
+            - ClusterVSwitchId
       Engine: PostgreSQL
       EngineVersion: '14.0'
       DBInstanceClass:
@@ -1135,19 +1166,23 @@ Resources:
       VectorConfigurationStatus: true
       EngineVersion: '6.0'
       ZoneId:
-        Fn::GetAtt:
-          - AckModule
-          - ClusterZoneId
+        Ref: ZoneId1
       VPCId:
-        Fn::GetAtt:
-          - AckModule
-          - ClusterVpcId
+        Fn::If:
+          - UserChooseVpc
+          - Ref: VpcId
+          - Fn::GetAtt:
+            - AckModule
+            - ClusterVpcId
       PayType:
         Ref: PayType
       VSwitchId:
-        Fn::GetAtt:
-          - AckModule
-          - ClusterVSwitchId
+        Fn::If:
+          - UserChooseVpc
+          - Ref: VSwitchId1
+          - Fn::GetAtt:
+            - AckModule
+            - ClusterVSwitchId
       Period:
         Ref: PayPeriod
       PeriodUnit:
@@ -1179,7 +1214,7 @@ Resources:
         Ref: ADBPGAccount
   AckModule:
     Version: default
-    Type: MODULE::ACS::ComputeNest::AckOrAcsCluster
+    Type: MODULE::SHARE::1853370294850618::AckOrAcsCluster
     Properties:
       EnableDualZones: true
       EnableCnfsNas: true
@@ -1313,7 +1348,7 @@ Resources:
               Value: '2'
               ValueType: Json
               FirstMatch: true
-              Timeout: 6000
+              Timeout: 300
           - - Kind: Deployment
               Name: ack-dify-api
               Namespace: dify-system
@@ -1322,7 +1357,7 @@ Resources:
               Value: '1'
               ValueType: Json
               FirstMatch: true
-              Timeout: 6000
+              Timeout: 300
       ChartValues:
         Fn::MergeMap:
           - Ref: HelmValues
@@ -2499,7 +2534,7 @@ Resources:
                 Ref: ADBPGAccount
               accountPassword:
                 Ref: ADBPGPassword
-              namespace: dify
+              namespace: difyns
               namespacePassword: difypassword
   NginxIngressResources:
     Type: DATASOURCE::CS::ClusterApplicationResources
