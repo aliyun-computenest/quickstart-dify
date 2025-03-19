@@ -83,26 +83,6 @@ ImageBuilder:
         git clone https://github.com/langgenius/dify.git
         cp dify/docker/.env.example dify/docker/.env
         cd dify/docker
-        sed -i 's/dify-api:1.0.0/dify-api:latest/g' ./docker-compose.yaml
-        sed -i 's/dify-web:1.0.0/dify-web:latest/g' ./docker-compose.yaml
-        wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq
-        chmod +x /usr/bin/yq
-        yq eval '.services.ollama = {
-          "volumes": ["ollama:/root/.ollama"],
-          "container_name": "ollama",
-          "pull_policy": "if_not_present",
-          "tty": true,
-          "restart": "unless-stopped",
-          "image": "ollama/ollama:latest",
-          "ports": ["11434:11434"],
-          "environment": {
-            "OLLAMA_ORIGINS": "*",
-            "OLLAMA_HOST": "0.0.0.0"
-          }
-        }' ./docker-compose.yaml -i
-        yq eval '.volumes.ollama = {}' ./docker-compose.yaml -i
-
-        rm -rf /usr/bin/yq
         docker compose up -d
         sleep 300
 
