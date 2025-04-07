@@ -85,5 +85,5 @@ Dify社区版在计算巢部署的费用主要涉及：
 
  ### 配置Dify 服务的弹性伸缩
    如果希望实现弹性扩缩容，
-   节点的弹性扩缩容可以参考此文档进行[配置](https://help.aliyun.com/zh/ack/ack-managed-and-ack-dedicated/user-guide/auto-scaling-of-nodes?spm=a2c4g.11186623.help-menu-85222.d_2_12_1_0.9ae546c6P5Pf9i)
+   节点的弹性扩缩容可以参考此文档进行[配置](https://help.aliyun.com/zh/ack/ack-managed-and-ack-dedicated/user-guide/auto-scaling-of-nodes?spm=a2c4g.11186623.help-menu-85222.d_2_12_1_0.9ae546c6P5Pf9i)。
    负载的弹性伸缩可以打开部署页面的“高可用”开关
