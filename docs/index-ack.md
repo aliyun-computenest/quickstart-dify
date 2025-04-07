@@ -47,11 +47,11 @@ Dify社区版在计算巢部署的费用主要涉及：
     ![image.png](9.png)
  若选择"新建容器集群"，需要配置节点规格、节点密码等。
     ![image.png](10.png)
-配置Postgres数据库，可以选择开源的Postgres，也可以选择阿里云的云数据库Postgres，如果选择新建云数据库，需要进行相关配置
+配置Postgres数据库，需要进行相关配置
   ![image.png](11.png)
-配置Reids数据库，可以选择开源的redis，也可以选择阿里云的云数据库Postgres，如果选择新建云数据库，需要进行相关配置
+配置Reids数据库，需要进行相关配置
   ![image.png](12.png)
-配置向量数据库，可以选择开源的Weaviate，也可以选择阿里云的AnalyticDB数据库，如果选择新建云数据库，需要进行相关配置
+配置向量数据库，需要进行相关配置
   ![image.png](13.png)
 配置网络参数，可以选择新建专有网络, 也可以选择已有专有网络，选择两个可用区，提高服务可用性。
   ![image.png](14.png)
@@ -67,7 +67,9 @@ Dify社区版在计算巢部署的费用主要涉及：
     ![image.png](6.png)
 5. 登录就能创建自己的dify应用了
     ![image.png](7.png)
+
 ## 使用说明
+  ### 配置访问入口
   如果选择已有ACK集群进行部署，需要手动配置访问入口, 推荐两种方式
   
   **方式一：** 通过负载均衡访问，按照如下步骤进行配置
@@ -80,3 +82,8 @@ Dify社区版在计算巢部署的费用主要涉及：
   ![img.png](20.png)
   配置完成后，您会看到Ingress的端点，将此端点对域名绑定host或配置解析后，即可通过域名访问Dify。
   ![img.png](21.png)
+
+ ### 配置Dify 服务的弹性伸缩
+   如果希望实现弹性扩缩容，
+   节点的弹性扩缩容可以参考此文档进行[配置](https://help.aliyun.com/zh/ack/ack-managed-and-ack-dedicated/user-guide/auto-scaling-of-nodes?spm=a2c4g.11186623.help-menu-85222.d_2_12_1_0.9ae546c6P5Pf9i)
+   负载的弹性伸缩可以打开部署页面的“高可用”开关
