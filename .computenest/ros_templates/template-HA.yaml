@@ -10,18 +10,6 @@ Locals:
         - Region:
             Ref: ALIYUN::Region
 Conditions:
-  CreateDataBaseConditions:
-    Fn::Equals:
-      - ExternalCloudDatabase
-      - Ref: DatabaseOption
-  CreateRedisConditions:
-    Fn::Equals:
-      - ExternalCloudDatabase
-      - Ref: RedisOption
-  CreateADBConditions:
-    Fn::Equals:
-      - ExternalCloudDatabase
-      - Ref: ADBOption
   EnableTLSConfigConditions:
     Fn::Equals:
       - true
@@ -89,60 +77,6 @@ Parameters:
       zh-cn: 选择已有/新建的专有网络
     Required: true
     Default: NewVPC
-  RedisOption:
-    Type: String
-    AllowedValues:
-      - Integration
-      - ExternalCloudDatabase
-    AssociationPropertyMetadata:
-      ValueLabelMapping:
-        Integration:
-          zh-cn: 开源Redis组件
-          en: Open source database component.
-        ExternalCloudDatabase:
-          zh-cn: 新建Redis数据库
-          en: New Redis cloud database.
-    Label:
-      en: Redis Configuration
-      zh-cn: Redis配置
-    Required: true
-    Default: Integration
-  DatabaseOption:
-    Type: String
-    AllowedValues:
-      - Integration
-      - ExternalCloudDatabase
-    AssociationPropertyMetadata:
-      ValueLabelMapping:
-        Integration:
-          zh-cn: 开源数据库组件
-          en: Open source database component.
-        ExternalCloudDatabase:
-          zh-cn: 新建云数据库
-          en: New external cloud database.
-    Label:
-      en: Database configuration
-      zh-cn: 数据库配置
-    Required: true
-    Default: Integration
-  ADBOption:
-    Type: String
-    AllowedValues:
-      - Integration
-      - ExternalCloudDatabase
-    AssociationPropertyMetadata:
-      ValueLabelMapping:
-        Integration:
-          zh-cn: 开源Weaviate组件
-          en: Open source database component.
-        ExternalCloudDatabase:
-          zh-cn: 新建AnalyticDB数据库
-          en: New AnalyticDB cloud database.
-    Label:
-      en: Vector database configuration
-      zh-cn: 向量数据库配置
-    Required: true
-    Default: Integration
   HPAOption:
     Type: Boolean
     Label:
@@ -277,21 +211,6 @@ Parameters:
               - true
           Value:
             - PostPaid
-      Visible:
-        Condition:
-          Fn::Or:
-            - Fn::Equals:
-                - ${AckOptions}
-                - NewAck
-            - Fn::Equals:
-                - ${RedisOption}
-                - ExternalCloudDatabase
-            - Fn::Equals:
-                - ${DatabaseOption}
-                - ExternalCloudDatabase
-            - Fn::Equals:
-                - ${ADBOption}
-                - ExternalCloudDatabase
   PayPeriodUnit:
     Type: String
     Label:
@@ -305,24 +224,10 @@ Parameters:
     AssociationPropertyMetadata:
       Visible:
         Condition:
-          Fn::And:
-            - Fn::Or:
-                - Fn::Equals:
-                    - ${AckOptions}
-                    - NewAck
-                - Fn::Equals:
-                    - ${RedisOption}
-                    - ExternalCloudDatabase
-                - Fn::Equals:
-                    - ${DatabaseOption}
-                    - ExternalCloudDatabase
-                - Fn::Equals:
-                    - ${ADBOption}
-                    - ExternalCloudDatabase
-            - Fn::Not:
-                Fn::Equals:
-                  - ${PayType}
-                  - PostPaid
+          Fn::Not:
+            Fn::Equals:
+              - ${PayType}
+              - PostPaid
   PayPeriod:
     Type: Number
     Label:
@@ -343,24 +248,10 @@ Parameters:
     AssociationPropertyMetadata:
       Visible:
         Condition:
-          Fn::And:
-            - Fn::Or:
-                - Fn::Equals:
-                    - ${AckOptions}
-                    - NewAck
-                - Fn::Equals:
-                    - ${RedisOption}
-                    - ExternalCloudDatabase
-                - Fn::Equals:
-                    - ${DatabaseOption}
-                    - ExternalCloudDatabase
-                - Fn::Equals:
-                    - ${ADBOption}
-                    - ExternalCloudDatabase
-            - Fn::Not:
-                Fn::Equals:
-                  - ${PayType}
-                  - PostPaid
+          Fn::Not:
+            Fn::Equals:
+              - ${PayType}
+              - PostPaid
   VpcCidrBlock:
     Type: String
     Label:
@@ -563,7 +454,7 @@ Parameters:
       RegionId: ${RegionId}
       ClusterType: ManagedKubernetes
       Profile: Default
-    Description: 部署应用程序的ACK集群ID
+    Description: 部署应用程序的ACK集群ID, 此处仅支持ACK 托管集群，包括 ACK 集群 Pro 版和 ACK 集群基础版。
     Default: Null
     Required: true
     Label: ACK 集群ID
@@ -572,16 +463,40 @@ Parameters:
     Type: String
   InstanceType:
     Type: CommaDelimitedList
-    Default: ''
+    Default: 
+      - ecs.u1-c1m2.xlarge
     AssociationProperty: ALIYUN::ECS::Instance::InstanceType
     AssociationPropertyMetadata:
       CreateACKClusterParams:
         NetworkPlugin: terway-eniip
+      Constraints:
+        InstanceTypeFamily:
+          - ecs.u1
       Visible:
         Condition:
           Fn::Equals:
             - ${AckOptions}
             - NewAck
+    AllowedValues:
+      - ecs.u1-c1m2.xlarge
+      - ecs.u1-c1m4.xlarge
+      - ecs.u1-c1m8.xlarge
+      - ecs.u1-c1m1.2xlarge
+      - ecs.u1-c1m2.2xlarge
+      - ecs.u1-c1m4.2xlarge
+      - ecs.u1-c1m8.2xlarge
+      - ecs.u1-c1m1.3xlarge
+      - ecs.u1-c1m2.3xlarge
+      - ecs.u1-c1m4.3xlarge
+      - ecs.u1-c1m8.3xlarge
+      - ecs.u1-c1m1.4xlarge
+      - ecs.u1-c1m2.4xlarge
+      - ecs.u1-c1m4.4xlarge
+      - ecs.u1-c1m8.4xlarge
+      - ecs.u1-c1m1.8xlarge
+      - ecs.u1-c1m2.8xlarge
+      - ecs.u1-c1m4.8xlarge
+      - ecs.u1-c1m8.8xlarge
     Label:
       en: Worker Instance Type
       zh-cn: Worker 节点实例规格
@@ -699,22 +614,13 @@ Parameters:
       zh-cn: Redis实例密码
       en: Redis Instance Password
     NoEcho: true
-    Required:
-      Fn::Equals:
-        - ExternalCloudDatabase
-        - ${RedisOption}
+    Required: true
     ConstraintDescription:
       en: Length 8-30, must contain three(Capital letters, lowercase letters, numbers,Special symbol in)
       zh-cn: 长度8-30，必须包含三项（大写字母、小写字母、数字、 !@#$%^&*()_+-=中的特殊符号）
     AllowedPattern: '^[0-9A-Za-z_!@#$%^&*()_+\-=\+]+$'
     MinLength: 8
     MaxLength: 30
-    AssociationPropertyMetadata:
-      Visible:
-        Condition:
-          Fn::Equals:
-            - ExternalCloudDatabase
-            - ${RedisOption}
   DBInstanceClass:
     Type: String
     Label:
@@ -723,19 +629,11 @@ Parameters:
     Description:
       zh-cn: 根据数据库引擎的类型和可用的区域支持选择实例规格；<br>请参见详细信息：<a href='https://help.aliyun.com/document_detail/26312.html' target='_blank'><b><font color='blue'>实例规格表</font></b></a>
       en: Select the instance specification based on the type of database engine and the available area support;<br>see detail <a href='https://www.alibabacloud.com/help/doc-detail/26312.html' target='_blank'><b><font color='blue'>Instance specification sheet</font></b></a>
-    Required:
-      Fn::Equals:
-        - ExternalCloudDatabase
-        - ${DatabaseOption}
+    Required: true
     AssociationProperty: ALIYUN::RDS::Instance::InstanceType
     AssociationPropertyMetadata:
       Engine: PostgreSQL
       ZoneId: ${ZoneId1}
-      Visible:
-        Condition:
-          Fn::Equals:
-            - ExternalCloudDatabase
-            - ${DatabaseOption}
     Default: pg.n4.2c.2m
   DBInstanceStorage:
     Type: Number
@@ -745,22 +643,13 @@ Parameters:
     Description:
       zh-cn: RDS实例大小范围为20-2000，每5个增量，单位为GB
       en: The size range of RDS instances is 20 - 2000, Incrementing in every 5, unit GB
-    Required:
-      Fn::Equals:
-        - ExternalCloudDatabase
-        - ${DatabaseOption}
+    Required: true
     ConstraintDescription:
       zh-cn: RDS实例大小范围为20-2000，每5个增量，单位为GB
       en: The size range of RDS instances is 20 - 2000, Incrementing in every 5, unit GB
     Default: 200
     MinValue: 20
     MaxValue: 2000
-    AssociationPropertyMetadata:
-      Visible:
-        Condition:
-          Fn::Equals:
-            - ExternalCloudDatabase
-            - ${DatabaseOption}
   DBInstanceStorageType:
     Type: String
     Label:
@@ -769,32 +658,18 @@ Parameters:
     Description:
       zh-cn: 实例存储类型；<br>请参见详细信息：<a href='https://help.aliyun.com/document_detail/69795.html' target='_blank'><b><font color='blue'>存储类型</font></b></a>
       en: The storage type of DB instance; see detail <a href='https://www.alibabacloud.com/help/en/apsaradb-for-rds/latest/storage-types' target='_blank'><b><font color=''blue''>Storage types</font></b></a>'
-    Required:
-      Fn::Equals:
-        - ExternalCloudDatabase
-        - ${DatabaseOption}
+    Required: true
     AllowedValues:
-      - local_ssd
-      - cloud_ssd
       - cloud_essd
       - cloud_essd2
       - cloud_essd3
     Default: cloud_essd
-    AssociationPropertyMetadata:
-      Visible:
-        Condition:
-          Fn::Equals:
-            - ExternalCloudDatabase
-            - ${DatabaseOption}
   PostgresSQLUserName:
     Type: String
     Description:
       en: Primary account name of the database instance.
       zh-cn: PostgresSQL数据库实例的主账号名称。
-    Required:
-      Fn::Equals:
-        - ExternalCloudDatabase
-        - ${DatabaseOption}
+    Required: true
     ConstraintDescription:
       en: Consist of 2 to 16 characters of lowercase letters, underline. Must begin with a letter and be end with an alphanumeric character
       zh-cn: 由 2 到 16 个小写字母组成，下划线。必须以字母开头，以字母数字字符结尾
@@ -804,12 +679,6 @@ Parameters:
     Default: postgres
     MaxLength: 16
     MinLength: 2
-    AssociationPropertyMetadata:
-      Visible:
-        Condition:
-          Fn::Equals:
-            - ExternalCloudDatabase
-            - ${DatabaseOption}
   PostgresSQLPassword:
     Default: Null
     NoEcho: true
@@ -823,19 +692,10 @@ Parameters:
     ConstraintDescription:
       en: Length 8-30, must contain three(Capital letters, lowercase letters, numbers, !@#$%^&*()_+-=Special symbol in)
       zh-cn: 长度8-30，必须包含三项（大写字母、小写字母、数字、 !@#$%^&*()_+-=中的特殊符号）
-    Required:
-      Fn::Equals:
-        - ExternalCloudDatabase
-        - ${DatabaseOption}
+    Required: true
     AllowedPattern: '^[0-9A-Za-z_!@#$%^&*()_+\-=\+]+$'
     MinLength: 8
     MaxLength: 30
-    AssociationPropertyMetadata:
-      Visible:
-        Condition:
-          Fn::Equals:
-            - ExternalCloudDatabase
-            - ${DatabaseOption}
   ADBPGInstanceSpec:
     Type: String
     Label:
@@ -843,20 +703,11 @@ Parameters:
       zh-cn: AnalyticDB 实例规格
     AssociationProperty: ALIYUN::GPDB::DBInstance:InstanceSpec
     Default: 4C16G
-    Required:
-      Fn::Equals:
-        - ExternalCloudDatabase
-        - ${ADBOption}
+    Required: true
     AllowedValues:
       - 4C16G
       - 8C32G
       - 16C64G
-    AssociationPropertyMetadata:
-      Visible:
-        Condition:
-          Fn::Equals:
-            - ExternalCloudDatabase
-            - ${ADBOption}
   ADBPGSegmentStorage:
     Type: Number
     AssociationProperty: ALIYUN::ECS::Instance::StorageSize
@@ -864,21 +715,12 @@ Parameters:
       en: SegmentStorageSize
       zh-cn: AnalyticDB Segment存储大小(G)
     Default: 200
-    Required:
-      Fn::Equals:
-        - ExternalCloudDatabase
-        - ${ADBOption}
+    Required: true
     AllowedValues:
       - 200
       - 400
       - 800
       - 1024
-    AssociationPropertyMetadata:
-      Visible:
-        Condition:
-          Fn::Equals:
-            - ExternalCloudDatabase
-            - ${ADBOption}
   ADBPGAccount:
     Type: String
     Description:
@@ -893,16 +735,7 @@ Parameters:
     Default: dify
     MaxLength: 16
     MinLength: 2
-    Required:
-      Fn::Equals:
-        - ExternalCloudDatabase
-        - ${ADBOption}
-    AssociationPropertyMetadata:
-      Visible:
-        Condition:
-          Fn::Equals:
-            - ExternalCloudDatabase
-            - ${ADBOption}
+    Required: true
   ADBPGPassword:
     Default: Null
     NoEcho: true
@@ -919,16 +752,7 @@ Parameters:
     AllowedPattern: '^[0-9A-Za-z_!@#$%^&*()_+\-=\+]+$'
     MinLength: 8
     MaxLength: 30
-    AssociationPropertyMetadata:
-      Visible:
-        Condition:
-          Fn::Equals:
-            - ExternalCloudDatabase
-            - ${ADBOption}
-    Required:
-      Fn::Equals:
-        - ExternalCloudDatabase
-        - ${ADBOption}
+    Required: true
   HelmValues:
     Type: Json
     Label:
@@ -939,14 +763,17 @@ Parameters:
     Default:
       image:
         api:
-          tag: 0.15.3
+          tag: 1.1.3
           pullPolicy: IfNotPresent
         web:
-          tag: 0.15.3
+          tag: 1.1.3
           pullPolicy: IfNotPresent
         sandbox:
-          tag: 0.2.10
+          tag: 0.2.11
           pullPolicy: IfNotPresent
+        pluginDaemon:
+          pullPolicy: IfNotPresent
+          tag: 0.0.6-local
         proxy:
           tag: 1.27.0
           pullPolicy: IfNotPresent
@@ -980,7 +807,6 @@ Resources:
         Ref: VpcOption
   RedisInstance:
     Type: ALIYUN::REDIS::Instance
-    Condition: CreateRedisConditions
     Properties:
       ChargeType:
         Ref: PayType
@@ -989,14 +815,14 @@ Resources:
       Period:
         Ref: PayPeriod
       VpcId:
-        Fn::If:
+        Fn::If: 
           - UserChooseVpc
           - Ref: VpcId
           - Fn::GetAtt:
             - AckModule
             - ClusterVpcId
       VSwitchId:
-        Fn::If:
+        Fn::If: 
           - UserChooseVpc
           - Ref: VSwitchId1
           - Fn::GetAtt:
@@ -1014,7 +840,6 @@ Resources:
         Ref: RedisInstancePassword
   RedisWhitelist:
     Type: ALIYUN::REDIS::Whitelist
-    Condition: CreateRedisConditions
     Properties:
       SecurityIpGroupAttribute: default
       SecurityIps:
@@ -1029,19 +854,18 @@ Resources:
         Ref: RedisInstance
   PostgreSQLInstance:
     Type: ALIYUN::RDS::DBInstance
-    Condition: CreateDataBaseConditions
     Properties:
       ZoneId:
          Ref: ZoneId1
       VpcId:
-        Fn::If:
+        Fn::If: 
           - UserChooseVpc
           - Ref: VpcId
           - Fn::GetAtt:
             - AckModule
             - ClusterVpcId
       VSwitchId:
-        Fn::If:
+        Fn::If: 
           - UserChooseVpc
           - Ref: VSwitchId1
           - Fn::GetAtt:
@@ -1137,7 +961,6 @@ Resources:
         - UserName
   DifyDataBase:
     Type: ALIYUN::RDS::Database
-    Condition: CreateDataBaseConditions
     Properties:
       CharacterSetName: UTF8
       DBInstanceId:
@@ -1147,7 +970,6 @@ Resources:
       DBName: dify
   DifySetUpDataBase:
     Type: ALIYUN::RDS::Database
-    Condition: CreateDataBaseConditions
     Properties:
       CharacterSetName: UTF8
       DBInstanceId:
@@ -1157,7 +979,6 @@ Resources:
       DBName: dify_setups
   ADBPGInstance:
     Type: ALIYUN::GPDB::DBInstance
-    Condition: CreateADBConditions
     Properties:
       MasterNodeNum: 1
       SegNodeNum: 4
@@ -1168,7 +989,7 @@ Resources:
       ZoneId:
         Ref: ZoneId1
       VPCId:
-        Fn::If:
+        Fn::If: 
           - UserChooseVpc
           - Ref: VpcId
           - Fn::GetAtt:
@@ -1177,7 +998,7 @@ Resources:
       PayType:
         Ref: PayType
       VSwitchId:
-        Fn::If:
+        Fn::If: 
           - UserChooseVpc
           - Ref: VSwitchId1
           - Fn::GetAtt:
@@ -1202,7 +1023,6 @@ Resources:
                 - ClusterVpcCidr
   GPDBAccount:
     Type: ALIYUN::GPDB::Account
-    Condition: CreateADBConditions
     Properties:
       DBInstanceId:
         Fn::GetAtt:
@@ -1217,7 +1037,6 @@ Resources:
     Type: MODULE::SHARE::1853370294850618::AckOrAcsCluster
     Properties:
       EnableDualZones: true
-      EnableCnfsNas: true
       EnableAutoScaling:
         Ref: AutoScalingOption
       PayType:
@@ -1377,6 +1196,10 @@ Resources:
                 repo:
                   Ref: Repo
                 image: dify-sandbox
+              pluginDaemon:
+                image: dify-plugin-daemon
+                repo:
+                  Ref: Repo
               proxy:
                 repo:
                   Ref: Repo
@@ -1448,6 +1271,8 @@ Resources:
                 appApi: ''
                 appWeb: ''
                 files: ''
+                marketplace: https://marketplace.dify.ai
+                marketplaceApi: https://marketplace.dify.ai
               mail:
                 defaultSender: 'YOUR EMAIL FROM (eg: no-reply <no-reply@dify.ai>)'
                 type: resend
@@ -1654,200 +1479,47 @@ Resources:
                 annotations: { }
                 labels: { }
                 clusterIP: ''
-            postgresql:
-              enabled:
-                Fn::If:
-                  - CreateDataBaseConditions
-                  - false
-                  - true
-              name: postgres
-              global:
-                storageClass: ''
-                postgresql:
-                  auth:
-                    postgresPassword: difyai123456
-                    username: ''
-                    password: ''
-                    database: dify
-              image:
-                registry:
-                  Ref: Repo
-                repository: postgresql
-                tag: 15.3.0-debian-11-r7
-                pullPolicy: IfNotPresent
-              architecture: replication
-              primary:
-                resources:
-                  limits: { }
-                  requests: { }
-                persistence:
-                  enabled: true
-                  storageClass: alicloud-disk-topology-alltype
-                  accessModes:
-                    - ReadWriteOnce
-                  size: 50Gi
-                affinity: { }
-                tolerations: [ ]
-              readReplicas:
-                name: read
-                replicaCount: 1
-                resources:
-                  limits: { }
-                  requests: { }
-                persistence:
-                  enabled: true
-                  storageClass: alicloud-disk-topology-alltype
-                  accessModes:
-                    - ReadWriteOnce
+            pluginDaemon:
+              affinity: {}
+              auth:
+                difyApiKey: QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1
+                serverKey: lYkiYYT6owG+71oLerGzA7GXCgOT++6ovaezWAjpCjf+Sjc3ZtU+qUEi
+              containerSecurityContext: {}
+              customLivenessProbe: {}
+              customReadinessProbe: {}
+              customStartupProbe: {}
+              enabled: true
+              extraEnv: null
+              marketplace:
+                apiProxyEnabled: false
+                enabled: true
+              nodeSelector: {}
+              persistence:
+                annotations:
+                  helm.sh/resource-policy: keep
+                mountPath: /app/storage
+                persistentVolumeClaim:
+                  accessModes: ReadWriteOnce
+                  existingClaim: ""
                   size: 20Gi
-                affinity: { }
-                tolerations: [ ]
-            weaviate:
-              enabled:
-                Fn::If:
-                  - CreateADBConditions
-                  - false
-                  - true
-              image:
-                registry:
-                  Ref: Repo
-                tag: 1.19.1
-                repo: weaviate
-                pullPolicy: IfNotPresent
-                pullSecrets: [ ]
-              command:
-                - /bin/weaviate
-              args:
-                - '--host'
-                - 0.0.0.0
-                - '--port'
-                - '8080'
-                - '--scheme'
-                - http
-                - '--config-file'
-                - /weaviate-config/conf.yaml
-                - '--read-timeout=60s'
-                - '--write-timeout=60s'
-              initContainers:
-                sysctlInitContainer:
-                  enabled: true
-                  sysctlVmMaxMapCount: 524288
-                  image:
-                    registry: docker.io
-                    repo: alpine
-                    tag: latest
-                    pullPolicy: IfNotPresent
-                extraInitContainers: { }
+                  storageClass: alicloud-disk-topology-alltype
+                  subPath: ""
+              podSecurityContext: {}
               replicas: 1
-              resources: { }
-              serviceAccountName: Null
-              storage:
-                size: 32Gi
-                storageClassName: alicloud-disk-topology-alltype
+              resources: {}
               service:
-                name: weaviate
-                type: ClusterIP
-                loadBalancerSourceRanges: [ ]
-                clusterIP: Null
-                annotations: { }
-              startupProbe:
-                enabled: false
-                initialDelaySeconds: 300
-                periodSeconds: 60
-                failureThreshold: 50
-                successThreshold: 1
-                timeoutSeconds: 3
-              livenessProbe:
-                initialDelaySeconds: 900
-                periodSeconds: 10
-                failureThreshold: 30
-                successThreshold: 1
-                timeoutSeconds: 3
-              readinessProbe:
-                initialDelaySeconds: 3
-                periodSeconds: 10
-                failureThreshold: 3
-                successThreshold: 1
-                timeoutSeconds: 3
-              terminationGracePeriodSeconds: 600
-              authentication:
-                anonymous_access:
-                  enabled: false
-                apikey:
-                  enabled: true
-                  allowed_keys:
-                    - WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih
-                  users:
-                    - hello@dify.ai
-                oidc:
-                  enabled: false
-              authorization:
-                admin_list:
-                  enabled: true
-                  users:
-                    - hello@dify.ai
-                  read_only_users: Null
-              query_defaults:
-                limit: 100
-              debug: false
-              env:
-                CLUSTER_GOSSIP_BIND_PORT: 7000
-                CLUSTER_DATA_BIND_PORT: 7001
-                GOGC: 100
-                PROMETHEUS_MONITORING_ENABLED: false
-                QUERY_MAXIMUM_RESULTS: 100000
-                TRACK_VECTOR_DIMENSIONS: false
-                REINDEX_VECTOR_DIMENSIONS_AT_STARTUP: false
-                AUTHENTICATION_APIKEY_ENABLED: 'true'
-                AUTHENTICATION_APIKEY_ALLOWED_KEYS: WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih
-                AUTHENTICATION_APIKEY_USERS: hello@dify.ai
-                AUTHORIZATION_ADMINLIST_ENABLED: 'true'
-                AUTHORIZATION_ADMINLIST_USERS: hello@dify.ai
-              envSecrets: Null
-              backups:
-                filesystem:
-                  enabled: false
-                  envconfig:
-                    BACKUP_FILESYSTEM_PATH: /tmp/backups
-                s3:
-                  enabled: false
-                  serviceAccountName: Null
-                  envconfig:
-                    BACKUP_S3_BUCKET: weaviate-backups
-                  secrets: { }
-                  envSecrets: { }
-                gcs:
-                  enabled: false
-                  envconfig:
-                    BACKUP_GCS_BUCKET: weaviate-backups
-                  secrets: { }
-                  envSecrets: { }
-                azure:
-                  enabled: false
-                  envconfig:
-                    BACKUP_AZURE_CONTAINER: weaviate-backups
-                  secrets: { }
-                  envSecrets: { }
-              modules:
-                default_vectorizer_module: none
-              custom_config_map:
-                enabled: false
-                name: custom-config
-              annotations: Null
-              nodeSelector: Null
-              tolerations: Null
-              affinity:
-                podAntiAffinity:
-                  preferredDuringSchedulingIgnoredDuringExecution:
-                    - weight: 1
-                      podAffinityTerm:
-                        topologyKey: kubernetes.io/hostname
-                        labelSelector:
-                          matchExpressions:
-                            - key: app
-                              operator: In
-                              values:
-                                - weaviate
+                annotations: {}
+                clusterIP: ""
+                labels: {}
+                ports:
+                  daemon: 5002
+                  pluginInstall: null
+              serviceAccount:
+                annotations: {}
+                automountServiceAccountToken: false
+                create: false
+                name: ""
+              tolerations: []
             service:
               type: ClusterIP
               port: 80
@@ -1880,639 +1552,57 @@ Resources:
             nodeSelector: { }
             tolerations: [ ]
             affinity: { }
-            redis:
-              enabled:
-                Fn::If:
-                  - CreateRedisConditions
-                  - false
-                  - true
-              global:
-                imageRegistry: ''
-                imagePullSecrets: [ ]
-                storageClass: ''
-                redis:
-                  password: ''
-              kubeVersion: ''
-              nameOverride: ''
-              fullnameOverride: ''
-              commonLabels: { }
-              commonAnnotations: { }
-              secretAnnotations: { }
-              clusterDomain: cluster.local
-              extraDeploy: [ ]
-              useHostnames: true
-              nameResolutionThreshold: 5
-              nameResolutionTimeout: 5
-              diagnosticMode:
-                enabled: false
-                command:
-                  - sleep
-                args:
-                  - infinity
-              image:
-                registry:
-                  Ref: Repo
-                repository: redis
-                tag: 6.2.7-debian-11-r11
-                digest: ''
-                pullPolicy: IfNotPresent
-                pullSecrets: [ ]
-                debug: false
-              architecture: replication
-              auth:
-                enabled: true
-                sentinel: true
-                password: difyai123456
-                existingSecret: ''
-                existingSecretPasswordKey: ''
-                usePasswordFiles: false
-              commonConfiguration: |-
-                # Enable AOF https://redis.io/topics/persistence#append-only-file
-                appendonly yes
-                # Disable RDB persistence, AOF persistence already enabled.
-                save ""
-              existingConfigmap: ''
-              master:
-                count: 1
-                configuration: ''
-                disableCommands:
-                  - FLUSHDB
-                  - FLUSHALL
-                command: [ ]
-                args: [ ]
-                preExecCmds: [ ]
-                extraFlags: [ ]
-                extraEnvVars: [ ]
-                extraEnvVarsCM: ''
-                extraEnvVarsSecret: ''
-                containerPorts:
-                  redis: 6379
-                startupProbe:
-                  enabled: false
-                  initialDelaySeconds: 20
-                  periodSeconds: 5
-                  timeoutSeconds: 5
-                  successThreshold: 1
-                  failureThreshold: 5
-                livenessProbe:
-                  enabled: true
-                  initialDelaySeconds: 20
-                  periodSeconds: 5
-                  timeoutSeconds: 5
-                  successThreshold: 1
-                  failureThreshold: 5
-                readinessProbe:
-                  enabled: true
-                  initialDelaySeconds: 20
-                  periodSeconds: 5
-                  timeoutSeconds: 1
-                  successThreshold: 1
-                  failureThreshold: 5
-                customStartupProbe: { }
-                customLivenessProbe: { }
-                customReadinessProbe: { }
-                resources:
-                  limits: { }
-                  requests: { }
-                podSecurityContext:
-                  enabled: true
-                  fsGroup: 1001
-                containerSecurityContext:
-                  enabled: true
-                  runAsUser: 1001
-                kind: StatefulSet
-                schedulerName: ''
-                updateStrategy:
-                  type: RollingUpdate
-                minReadySeconds: 0
-                priorityClassName: ''
-                hostAliases: [ ]
-                podLabels: { }
-                podAnnotations: { }
-                shareProcessNamespace: false
-                podAffinityPreset: ''
-                podAntiAffinityPreset: soft
-                nodeAffinityPreset:
-                  type: ''
-                  key: ''
-                  values: [ ]
-                affinity: { }
-                nodeSelector: { }
-                tolerations: [ ]
-                topologySpreadConstraints: [ ]
-                dnsPolicy: ''
-                dnsConfig: { }
-                lifecycleHooks: { }
-                extraVolumes: [ ]
-                extraVolumeMounts: [ ]
-                sidecars: [ ]
-                initContainers: [ ]
-                persistence:
-                  enabled: true
-                  medium: ''
-                  sizeLimit: ''
-                  path: /data
-                  subPath: ''
-                  subPathExpr: ''
-                  storageClass: alicloud-disk-topology-alltype
-                  accessModes:
-                    - ReadWriteOnce
-                  size: 20Gi
-                  annotations: { }
-                  labels: { }
-                  selector: { }
-                  dataSource: { }
-                  existingClaim: ''
-                service:
-                  type: ClusterIP
-                  ports:
-                    redis: 6379
-                  nodePorts:
-                    redis: ''
-                  externalTrafficPolicy: Cluster
-                  extraPorts: [ ]
-                  internalTrafficPolicy: Cluster
-                  clusterIP: ''
-                  loadBalancerIP: ''
-                  loadBalancerSourceRanges: [ ]
-                  externalIPs: [ ]
-                  annotations: { }
-                  sessionAffinity: None
-                  sessionAffinityConfig: { }
-                terminationGracePeriodSeconds: 30
-                serviceAccount:
-                  create: false
-                  name: ''
-                  automountServiceAccountToken: true
-                  annotations: { }
-              replica:
-                replicaCount: 3
-                configuration: ''
-                disableCommands:
-                  - FLUSHDB
-                  - FLUSHALL
-                command: [ ]
-                args: [ ]
-                preExecCmds: [ ]
-                extraFlags: [ ]
-                extraEnvVars: [ ]
-                extraEnvVarsCM: ''
-                extraEnvVarsSecret: ''
-                externalMaster:
-                  enabled: false
-                  host: ''
-                  port: 6379
-                containerPorts:
-                  redis: 6379
-                startupProbe:
-                  enabled: true
-                  initialDelaySeconds: 10
-                  periodSeconds: 10
-                  timeoutSeconds: 5
-                  successThreshold: 1
-                  failureThreshold: 22
-                livenessProbe:
-                  enabled: true
-                  initialDelaySeconds: 20
-                  periodSeconds: 5
-                  timeoutSeconds: 5
-                  successThreshold: 1
-                  failureThreshold: 5
-                readinessProbe:
-                  enabled: true
-                  initialDelaySeconds: 20
-                  periodSeconds: 5
-                  timeoutSeconds: 1
-                  successThreshold: 1
-                  failureThreshold: 5
-                customStartupProbe: { }
-                customLivenessProbe: { }
-                customReadinessProbe: { }
-                resources:
-                  limits: { }
-                  requests: { }
-                podSecurityContext:
-                  enabled: true
-                  fsGroup: 1001
-                containerSecurityContext:
-                  enabled: true
-                  runAsUser: 1001
-                schedulerName: ''
-                updateStrategy:
-                  type: RollingUpdate
-                minReadySeconds: 0
-                priorityClassName: ''
-                podManagementPolicy: ''
-                hostAliases: [ ]
-                podLabels: { }
-                podAnnotations: { }
-                shareProcessNamespace: false
-                podAffinityPreset: ''
-                podAntiAffinityPreset: soft
-                nodeAffinityPreset:
-                  type: ''
-                  key: ''
-                  values: [ ]
-                affinity: { }
-                nodeSelector: { }
-                tolerations: [ ]
-                topologySpreadConstraints: [ ]
-                dnsPolicy: ''
-                dnsConfig: { }
-                lifecycleHooks: { }
-                extraVolumes: [ ]
-                extraVolumeMounts: [ ]
-                sidecars: [ ]
-                initContainers: [ ]
-                persistence:
-                  enabled: true
-                  medium: ''
-                  sizeLimit: ''
-                  path: /data
-                  subPath: ''
-                  subPathExpr: ''
-                  storageClass: alicloud-disk-topology-alltype
-                  accessModes:
-                    - ReadWriteOnce
-                  size: 20Gi
-                  annotations: { }
-                  labels: { }
-                  selector: { }
-                  dataSource: { }
-                  existingClaim: ''
-                service:
-                  type: ClusterIP
-                  ports:
-                    redis: 6379
-                  nodePorts:
-                    redis: ''
-                  externalTrafficPolicy: Cluster
-                  internalTrafficPolicy: Cluster
-                  extraPorts: [ ]
-                  clusterIP: ''
-                  loadBalancerIP: ''
-                  loadBalancerSourceRanges: [ ]
-                  annotations: { }
-                  sessionAffinity: None
-                  sessionAffinityConfig: { }
-                terminationGracePeriodSeconds: 30
-                autoscaling:
-                  enabled: false
-                  minReplicas: 1
-                  maxReplicas: 11
-                  targetCPU: ''
-                  targetMemory: ''
-                serviceAccount:
-                  create: false
-                  name: ''
-                  automountServiceAccountToken: true
-                  annotations: { }
-              sentinel:
-                enabled: false
-                image:
-                  registry: docker.io
-                  repository: bitnami/redis-sentinel
-                  tag: 7.0.11-debian-11-r10
-                  digest: ''
-                  pullPolicy: IfNotPresent
-                  pullSecrets: [ ]
-                  debug: false
-                annotations: { }
-                masterSet: mymaster
-                quorum: 2
-                getMasterTimeout: 220
-                automateClusterRecovery: false
-                redisShutdownWaitFailover: true
-                downAfterMilliseconds: 60000
-                failoverTimeout: 180000
-                parallelSyncs: 1
-                configuration: ''
-                command: [ ]
-                args: [ ]
-                preExecCmds: [ ]
-                extraEnvVars: [ ]
-                extraEnvVarsCM: ''
-                extraEnvVarsSecret: ''
-                externalMaster:
-                  enabled: false
-                  host: ''
-                  port: 6379
-                containerPorts:
-                  sentinel: 26379
-                startupProbe:
-                  enabled: true
-                  initialDelaySeconds: 10
-                  periodSeconds: 10
-                  timeoutSeconds: 5
-                  successThreshold: 1
-                  failureThreshold: 22
-                livenessProbe:
-                  enabled: true
-                  initialDelaySeconds: 20
-                  periodSeconds: 10
-                  timeoutSeconds: 5
-                  successThreshold: 1
-                  failureThreshold: 6
-                readinessProbe:
-                  enabled: true
-                  initialDelaySeconds: 20
-                  periodSeconds: 5
-                  timeoutSeconds: 1
-                  successThreshold: 1
-                  failureThreshold: 6
-                customStartupProbe: { }
-                customLivenessProbe: { }
-                customReadinessProbe: { }
-                persistence:
-                  enabled: false
-                  storageClass: alicloud-disk-topology-alltype
-                  accessModes:
-                    - ReadWriteOnce
-                  size: 20Gi
-                  annotations: { }
-                  labels: { }
-                  selector: { }
-                  dataSource: { }
-                  medium: ''
-                  sizeLimit: ''
-                resources:
-                  limits: { }
-                  requests: { }
-                containerSecurityContext:
-                  enabled: true
-                  runAsUser: 1001
-                lifecycleHooks: { }
-                extraVolumes: [ ]
-                extraVolumeMounts: [ ]
-                service:
-                  type: ClusterIP
-                  ports:
-                    redis: 6379
-                    sentinel: 26379
-                  nodePorts:
-                    redis: ''
-                    sentinel: ''
-                  externalTrafficPolicy: Cluster
-                  extraPorts: [ ]
-                  clusterIP: ''
-                  loadBalancerIP: ''
-                  loadBalancerSourceRanges: [ ]
-                  annotations: { }
-                  sessionAffinity: None
-                  sessionAffinityConfig: { }
-                  headless:
-                    annotations: { }
-                terminationGracePeriodSeconds: 30
-              serviceBindings:
-                enabled: false
-              networkPolicy:
-                enabled: false
-                allowExternal: true
-                extraIngress: [ ]
-                extraEgress: [ ]
-                ingressNSMatchLabels: { }
-                ingressNSPodMatchLabels: { }
-              podSecurityPolicy:
-                create: false
-                enabled: false
-              rbac:
-                create: false
-                rules: [ ]
-              serviceAccount:
-                create: true
-                name: ''
-                automountServiceAccountToken: true
-                annotations: { }
-              pdb:
-                create: false
-                minAvailable: 1
-                maxUnavailable: ''
-              tls:
-                enabled: false
-                authClients: true
-                autoGenerated: false
-                existingSecret: ''
-                certificatesSecret: ''
-                certFilename: ''
-                certKeyFilename: ''
-                certCAFilename: ''
-                dhParamsFilename: ''
-              metrics:
-                enabled: false
-                image:
-                  registry: docker.io
-                  repository: bitnami/redis-exporter
-                  tag: 1.50.0-debian-11-r13
-                  digest: ''
-                  pullPolicy: IfNotPresent
-                  pullSecrets: [ ]
-                startupProbe:
-                  enabled: false
-                  initialDelaySeconds: 10
-                  periodSeconds: 10
-                  timeoutSeconds: 5
-                  successThreshold: 1
-                  failureThreshold: 5
-                livenessProbe:
-                  enabled: true
-                  initialDelaySeconds: 10
-                  periodSeconds: 10
-                  timeoutSeconds: 5
-                  successThreshold: 1
-                  failureThreshold: 5
-                readinessProbe:
-                  enabled: true
-                  initialDelaySeconds: 5
-                  periodSeconds: 10
-                  timeoutSeconds: 1
-                  successThreshold: 1
-                  failureThreshold: 3
-                customStartupProbe: { }
-                customLivenessProbe: { }
-                customReadinessProbe: { }
-                command: [ ]
-                redisTargetHost: localhost
-                extraArgs: { }
-                extraEnvVars: [ ]
-                containerSecurityContext:
-                  enabled: true
-                  runAsUser: 1001
-                extraVolumes: [ ]
-                extraVolumeMounts: [ ]
-                resources:
-                  limits: { }
-                  requests: { }
-                podLabels: { }
-                podAnnotations:
-                  prometheus.io/scrape: 'true'
-                  prometheus.io/port: '9121'
-                service:
-                  type: ClusterIP
-                  port: 9121
-                  externalTrafficPolicy: Cluster
-                  extraPorts: [ ]
-                  loadBalancerIP: ''
-                  loadBalancerSourceRanges: [ ]
-                  annotations: { }
-                  clusterIP: ''
-                serviceMonitor:
-                  enabled: false
-                  namespace: ''
-                  interval: 30s
-                  scrapeTimeout: ''
-                  relabellings: [ ]
-                  metricRelabelings: [ ]
-                  honorLabels: false
-                  additionalLabels: { }
-                  podTargetLabels: [ ]
-                prometheusRule:
-                  enabled: false
-                  namespace: ''
-                  additionalLabels: { }
-                  rules: [ ]
-              volumePermissions:
-                enabled: false
-                image:
-                  registry: docker.io
-                  repository: bitnami/bitnami-shell
-                  tag: 11-debian-11-r118
-                  digest: ''
-                  pullPolicy: IfNotPresent
-                  pullSecrets: [ ]
-                resources:
-                  limits: { }
-                  requests: { }
-                containerSecurityContext:
-                  runAsUser: 0
-              sysctl:
-                enabled: false
-                image:
-                  registry: docker.io
-                  repository: bitnami/bitnami-shell
-                  tag: 11-debian-11-r118
-                  digest: ''
-                  pullPolicy: IfNotPresent
-                  pullSecrets: [ ]
-                command: [ ]
-                mountHostSys: false
-                resources:
-                  limits: { }
-                  requests: { }
-              useExternalDNS:
-                enabled: false
-                suffix: ''
-                annotationKey: external-dns.alpha.kubernetes.io/
-                additionalAnnotations: { }
             externalAliyunOSS:
               enabled: true
-              endpoint:
+              endpoint: 
                 Fn::Sub:
                   - 'oss-${RegionId}.aliyuncs.com'
                   - RegionId:
                       Ref: ALIYUN::Region
-              bucketName:
+              bucketName: 
                 Fn::Join:
                   - '-'
                   - - 'dify'
                     - Ref: ALIYUN::StackName
-              accessKey:
+              accessKey: 
                 Fn::GetAtt:
                   - AccessKey
                   - AccessKeyId
-              secretKey:
+              secretKey: 
                 Fn::GetAtt:
                   - AccessKey
                   - AccessKeySecret
-              region:
+              region: 
                 Ref: ALIYUN::Region
               authVersion: v4
               path: your-path
-            externalS3:
-              enabled: false
-              endpoint: https://xxx.r2.cloudflarestorage.com
-              accessKey: ak-difyai
-              secretKey: sk-difyai
-              useSSL: false
-              bucketName: difyai
-              rootPath: ''
-              useIAM: false
-              iamEndpoint: ''
-            externalAzureBlobStorage:
-              enabled: false
-              url: https://<your_account_name>.blob.core.windows.net
-              account: https://xxx.r2.cloudflarestorage.com
-              key: difyai
-              container: difyai-container
             externalPostgres:
-              enabled:
-                Fn::If:
-                  - CreateDataBaseConditions
-                  - true
-                  - false
+              enabled: true
               username:
                 Ref: PostgresSQLUserName
               password:
                 Ref: PostgresSQLPassword
               address:
-                Fn::If:
-                  - CreateDataBaseConditions
-                  - Fn::GetAtt:
-                      - PostgreSQLInstance
-                      - InnerConnectionString
-                  - ''
+                Fn::GetAtt:
+                  - PostgreSQLInstance
+                  - InnerConnectionString
               port: 5432
               dbName: dify
               maxOpenConns: 20
               maxIdleConns: 5
             externalRedis:
-              enabled:
-                Fn::If:
-                  - CreateRedisConditions
-                  - true
-                  - false
+              enabled: true
               host:
-                Fn::If:
-                  - CreateRedisConditions
-                  - Fn::GetAtt:
-                      - RedisInstance
-                      - ConnectionDomain
-                  - ''
+                Fn::GetAtt:
+                  - RedisInstance
+                  - ConnectionDomain
               port: 6379
               username: ''
               password:
                 Ref: RedisInstancePassword
               useSSL: false
-            externalWeaviate:
-              enabled: false
-              endpoint: http://weaviate:8080
-              apiKey: your-weaviate-api-key
-            externalQdrant:
-              enabled: false
-              endpoint: https://your-qdrant-cluster-url.qdrant.tech/
-              apiKey: ak-difyai
-              timeout: 20
-              grpc:
-                enabled: false
-                port: 6334
-            externalMilvus:
-              enabled: false
-              uri: http://milvus.example:19530
-              token: your-milvus-token
-              user: user
-              password: Milvus
-            externalPgvector:
-              enabled: false
-              host: gp-****-master.gpdb.rds.aliyuncs.com
-              port: 5432
-              user: user
-              password: '****'
-              dbName: dify
             externalAnalyticDB:
-              enabled:
-                Fn::If:
-                  - CreateADBConditions
-                  - true
-                  - false
+              enabled: true
               accessKey:
                 Fn::GetAtt:
                   - AccessKey
@@ -2524,18 +1614,21 @@ Resources:
               region:
                 Ref: ALIYUN::Region
               instanceId:
-                Fn::If:
-                  - CreateADBConditions
-                  - Fn::GetAtt:
-                      - ADBPGInstance
-                      - DBInstanceId
-                  - ''
+                Fn::GetAtt:
+                  - ADBPGInstance
+                  - DBInstanceId
               account:
                 Ref: ADBPGAccount
               accountPassword:
                 Ref: ADBPGPassword
               namespace: difyns
               namespacePassword: difypassword
+            postgresql:
+              enabled: false
+            weaviate:
+              enabled: false
+            redis:
+              enabled: false
   NginxIngressResources:
     Type: DATASOURCE::CS::ClusterApplicationResources
     Condition: CreateAck
@@ -2544,6 +1637,7 @@ Resources:
     Properties:
       Namespace: kube-system
       Kind: Service
+      ApiVersion: v1
       JsonPath: $.status.loadBalancer.ingress[0].ip
       ClusterId:
         Fn::GetAtt:
@@ -2586,6 +1680,14 @@ Metadata:
   ALIYUN::ROS::Interface:
     ParameterGroups:
       - Parameters:
+          - PayType
+          - PayPeriodUnit
+          - PayPeriod
+        Label:
+          default:
+            en: PayType Configuration
+            zh-cn: 付费类型配置
+      - Parameters:
           - AckOptions
           - ClusterId
           - InstanceType
@@ -2604,7 +1706,6 @@ Metadata:
             en: Kubernetes Configuration
             zh-cn: Kubernetes配置
       - Parameters:
-          - DatabaseOption
           - DBInstanceClass
           - DBInstanceStorageType
           - DBInstanceStorage
@@ -2615,14 +1716,12 @@ Metadata:
             en: Postgres Database Configuration
             zh-cn: Postgres 数据库配置
       - Parameters:
-          - RedisOption
           - RedisInstancePassword
         Label:
           default:
             en: Redis Database Configuration
             zh-cn: Redis数据库配置
       - Parameters:
-          - ADBOption
           - ADBPGInstanceSpec
           - ADBPGSegmentStorage
           - ADBPGAccount
@@ -2645,14 +1744,6 @@ Metadata:
           default:
             zh-cn: 基础配置
             en: Basic Configuration
-      - Parameters:
-          - PayType
-          - PayPeriodUnit
-          - PayPeriod
-        Label:
-          default:
-            en: PayType Configuration
-            zh-cn: 付费类型配置
       - Parameters:
           - DomainAddress
           - EnableTLSConfig
