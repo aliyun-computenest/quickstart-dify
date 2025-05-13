@@ -2,6 +2,13 @@ ROSTemplateFormatVersion: '2015-09-01'
 Description:
   en: DockerCompose service template
   zh-cn: DockerCompose服务模板
+Locals:
+  CurTime:
+    Type: Eval
+    Value:
+      Fn::FormatTime:
+        - '%Y%m%d-%H%M%S'
+        - Asia/Shanghai
 Conditions:
   CreateVpcConditions:
     Fn::Equals:
@@ -298,9 +305,84 @@ Resources:
       CommandContent:
         Fn::Sub:
           - |
-            sleep 30
+            #!/bin/bash
+            disk_device="/dev/vdb"
+            parted_disk_device="/dev/vdb1"
+            mount_point="/mnt/data"
+            # 已初始化的磁盘，跳过初始化，直接挂载
+            if blkid -o value -s TYPE $disk_device &>/dev/null; then
+              echo "Disk is already initialized."
+            else
+              echo "Disk is not initialized, initializing..."
+              cat >> /root/InitDataDisk.sh << "EOF"
+              #!/bin/bash
+              echo "p
+              n
+              p
+
+
+
+              w
+              " |  fdisk -u /dev/vdb
+            EOF
+              /bin/bash /root/InitDataDisk.sh
+              rm -f /root/InitDataDisk.sh
+              mkfs -t ext4 $parted_disk_device
+            fi
+
+            cp /etc/fstab /etc/fstab.bak
+            mkdir $mount_point
+            echo `blkid $parted_disk_device | awk '{print $2}' | sed 's/\\\"//g'` $mount_point ext4 defaults 0 0 >> /etc/fstab
+            mount -a
+
+            #用于版本升级
+            echo "当前时间：${CurTime}"
+
+            cd /usr/local/applications/dify/docker
+            docker compose down
+
+            TARGET_DIR="/mnt/data/volumes"
+            SOURCE_DIR="/usr/local/applications/dify/docker/volumes"
+
+            # 检查目标目录是否存在
+            if [ -d "$TARGET_DIR" ]; then
+              echo "检测到目标目录 $TARGET_DIR 已存在。"
+            else
+              echo "目标目录 $TARGET_DIR 不存在，正在创建..."
+              # 创建目标目录
+              mkdir -p "$TARGET_DIR"
+              if [ $? -ne 0 ]; then
+                  echo "创建目录 $TARGET_DIR 失败！"
+                  exit 1
+              fi
+              mv "$SOURCE_DIR"/* "$TARGET_DIR"/
+            fi
+
+            # 定义文件路径和备份路径
+            COMPOSE_FILE="docker-compose.yaml"
+            BACKUP_FILE="docker-compose.yaml.bak"
+
+            # 备份原文件
+            echo "Backing up original docker-compose.yaml..."
+            cp "$COMPOSE_FILE" "$BACKUP_FILE"
+            if [ $? -ne 0 ]; then
+              echo "Backup failed!"
+              exit 1
+            fi
+
+            # 使用 sed 替换所有 ./volumes 开头的路径
+            echo "Replacing paths in docker-compose.yaml..."
+            sed -i -E 's|\./volumes/([^:]+)|/mnt/data/volumes/\1|g' "$COMPOSE_FILE"
+            
+
+            chmod -R 777 /mnt/data/volumes
+            docker compose up -d
+
+            ARGUS_VERSION=3.5.7 /bin/bash -c "$(curl -sS https://cms-agent-${RegionId}.oss-${RegionId}-internal.aliyuncs.com/Argus/agent_install_ecs-1.7.sh)" >> /root/install_cms_agent.log 2>&1
           - RegionId:
               Ref: ALIYUN::Region
+            CurTime:
+              Ref: CurTime
 Outputs:
   dify:
     Description:
