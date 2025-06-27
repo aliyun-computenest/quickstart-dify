@@ -62,3 +62,6 @@ Dify社区版在计算巢部署的费用主要涉及：
 
 6. 登录就能创建自己的dify应用了
     ![image.png](7.png)
+## Dify 版本更新
+1. 32版本之前的服务不支持在计算巢升级Dify 软件版本，需要手动更新，详情可参考Dify的[官方文档](https://docs.dify.ai/zh-hans/development/migration/migrate-to-v1)。
+2. 32版本及32版本之后的服务，可以在计算巢通过“升级服务实例”的方式更新软件版本。
