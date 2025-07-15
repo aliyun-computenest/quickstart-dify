@@ -12,8 +12,6 @@ Service:
     TemplateConfigs:
       - Name: 单机版
         Url: 'ros_templates/template.yaml'
-      - Name: 高可用版
-        Url: 'ros_templates/template-HA.yaml'
   ServiceType: private
   ServiceInfo:
     Locale: zh-CN
