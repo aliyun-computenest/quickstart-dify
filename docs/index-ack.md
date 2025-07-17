@@ -22,7 +22,7 @@ Dify.AI 是一款 LLMOps 平台，帮助开发者更简单、更快速地构建 
 | AliyunROSFullAccess             | 管理资源编排服务（ROS）的权限       |
 | AliyunKvstoreFullAccess             | 管理云数据库Tair（兼容 Redis）的权限      |
 | AliyunRDSFullAccess             | 管理云数据库服务（RDS）的权限      |
-| AliyunGPDBFullAccess             | 管理 AnalyticDB for PostgreSQL 的权限      |
+| AliyunOTSFullAccess             | 管理 TableStore 的权限      |
 | AliyunComputeNestUserFullAccess | 管理计算巢服务（ComputeNest）的用户侧权限 |
 
 
@@ -51,8 +51,7 @@ Dify社区版在计算巢部署的费用主要涉及：
   ![image.png](11.png)
 配置Reids数据库，需要进行相关配置
   ![image.png](12.png)
-配置向量数据库，需要进行相关配置
-  ![image.png](13.png)
+配置TablesStore，保持默认值即可
 配置网络参数，可以选择新建专有网络, 也可以选择已有专有网络，选择两个可用区，提高服务可用性。
   ![image.png](14.png)
 进行服务相关配置，如果您有可用的域名，可填写您自己的域名，否则默认使用计算巢提供的测试域名，测试域名需要绑定host后使用，否则无法访问。
