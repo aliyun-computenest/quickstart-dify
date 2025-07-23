@@ -36,7 +36,7 @@ Dify社区版在计算巢部署的费用主要涉及：
 - 所选的云数据库的规格
 
 ## 部署架构
-<img src="8.png" width="1500" height="700" align="bottom"/>
+<img src="22.jpg" width="1500" height="700" align="bottom"/>
 
   Dify应用的组件主要包括业务组件和基础组件两大类，业务组件包括：api/worker、web、sandbox。基础组件包括：db、verctor db、redis、nginx、ssrf_proxy。
 此方案中基础组件既可以选择社区开源的redis、postgres以及weaviate，也可以选择阿里云的云数据库，如果您对这些基础组件有更高的性能、功能和SLA要求、或者对基础组件有运维和管理的压力，推荐使用云数据库。
