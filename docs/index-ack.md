@@ -86,3 +86,5 @@ Dify社区版在计算巢部署的费用主要涉及：
    如果希望实现弹性扩缩容，
    节点的弹性扩缩容可以参考此文档进行[配置](https://help.aliyun.com/zh/ack/ack-managed-and-ack-dedicated/user-guide/auto-scaling-of-nodes?spm=a2c4g.11186623.help-menu-85222.d_2_12_1_0.9ae546c6P5Pf9i)。
    负载的弹性伸缩可以打开部署页面的“高可用”开关
+## 常见问题
+1. 服务实例删除失败：如果服务实例删除时，会出现报错：DELETE_FAILED: The instance is not empty. ErrorCode: OTSValidationFail，原因是向量数据库Tablestore中有数据，Tablestore中的数据不支持自动删除，需要手动到[Tablestore控制台](https://otsnext.console.aliyun.com/cn-guangzhou/totalList), 找到对应的实例，删除所有的数据表。
