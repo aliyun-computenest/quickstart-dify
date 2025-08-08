@@ -65,7 +65,7 @@ Dify社区版在计算巢部署的费用主要涉及：
 ## Dify 版本更新
 1. 32版本之前的服务不支持在计算巢升级Dify 软件版本，需要手动更新，详情可参考Dify的[官方文档](https://docs.dify.ai/zh-hans/development/migration/migrate-to-v1)。
 2. 32版本及32版本之后的服务，可以在计算巢通过“升级服务实例”的方式更新软件版本。
-## Dify 实现 MCP Server 集中管理
+## 基于 Nacos 实现 MCP Server 集中管理
 Dify自1.6.0版本后官方支持了MCP Server, 对接 Nacos MCP Registry 可以实现 MCP Server 集中管理。
 Nacos 3.0 版本实现了 MCP Registry 管理功能，可以对所有的MCP Server 进行集中式的管理。Dify 应用通过接入 Nacos MCP 插件，基于 Nacos MCP Registry，可以实现以下功能：
 1. MCP Server 自动注册和动态发现: 支持多实例注册分布式部署，提高容灾能力。支持标准 MCP Server 注册，以及存量的微服务 API 0代码改动转化成 MCP 服务。
