@@ -68,11 +68,7 @@ Dify社区版在计算巢部署的费用主要涉及：
 ## Dify 实现 MCP Server 集中管理
 Dify自1.6.0版本后官方支持了MCP Server, 对接 Nacos MCP Registry 可以实现 MCP Server 集中管理。
 Nacos 3.0 版本实现了 MCP Registry 管理功能，可以对所有的MCP Server 进行集中式的管理。Dify 应用通过接入 Nacos MCP 插件，基于 Nacos MCP Registry，可以实现以下功能：
-1. MCP Server 自动注册和动态发现
-   a. 支持多实例注册分布式部署，提高容灾能力。
-   b. 支持标准 MCP Server 注册，以及存量的微服务 API 0代码改动转化成 MCP 服务。
-2. MCP Server 运行时信息动态管理
-   a. 工具描述运行时动态修改生效，帮助 MCP Server 快速调优迭代。
-   b. MCP Tools 动态开关，动态调整暴露工具列表。MCP Server 版本管理。
-3. MSE Nacos 支持 MCP Registry 管理功能，高可用，高性能， 高性能，具体接入和使用教程，请参考：[Dify Nacos MCP 插件使用教程与最佳实践](https://help.aliyun.com/zh/mse/use-cases/dify-docking-with-nacos-mcp-registry-to-realize-centralized-management-of-mcp-server) 
+1. MCP Server 自动注册和动态发现: 支持多实例注册分布式部署，提高容灾能力。支持标准 MCP Server 注册，以及存量的微服务 API 0代码改动转化成 MCP 服务。
+2. MCP Server 运行时信息动态管理: 工具描述运行时动态修改生效，帮助 MCP Server 快速调优迭代。MCP Tools 动态开关，动态调整暴露工具列表。MCP Server 版本管理。
+3. MSE Nacos 支持 MCP Registry 管理功能，高可用，高性能， 高性能，具体接入和使用教程，请参考：[Dify Nacos MCP 插件使用教程与最佳实践](https://help.aliyun.com/zh/mse/use-cases/dify-docking-with-nacos-mcp-registry-to-realize-centralized-management-of-mcp-server) .
 您也可以通过部署开源 Nacos 3.x 进行试用，接入文档：[开源接入文档](https://nacos.io/docs/latest/manual/user/ai/dify-nacos-mcp/?spm=5238cd80.2ef5001f.0.0.3f613b7cC9m8vz)
