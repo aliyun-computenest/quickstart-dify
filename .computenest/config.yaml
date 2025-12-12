@@ -19,7 +19,7 @@ Service:
     Image: resources/icons/service_logo.png
     Softwares:
     - Name: dify
-      Version: v1.10.1-fix.1
+      Version: v1.11.1-fix.1
 Artifact:
   EcsImage:
     ArtifactType: EcsImage
@@ -38,334 +38,118 @@ ImageBuilder:
     CommandType: RunShellScript
     Timeout: 10800
     Tags: []
-    CommandContent: |-
-      
-      #!/bin/bash
-      # 升级基础组件：
-      yum check-update
-      yum -y upgrade --security
-      yum -y upgrade-minimal
-      
-      # 安装docker-ce
-      yum-config-manager --add-repo http://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
-      yum makecache
-      yum install -y curl git docker-ce
-      mkdir -p /etc/docker/
-      echo '{
-          "default-address-pools": [
-              {
-                  "base": "10.255.0.0/16",
-                  "size": 24
-              }
-          ]
-      }' > /etc/docker/daemon.json
-      
-      prefixChinaRegion="cn-"
-      region=$(curl -s http://100.100.100.200/latest/meta-data/region-id)
-      
-      if [[ ${region} == ${prefixChinaRegion}* && ${region} != "cn-hongkong" ]]; then
-        echo '{
-            "default-address-pools": [
-                {
-                    "base": "10.255.0.0/16",
-                    "size": 24
-                }
-            ],
-            "registry-mirrors": [
-                "https://mirrors-ssl.aliyuncs.com/"
-            ]
-        }' > /etc/docker/daemon.json
-      fi
-      
-      sudo systemctl enable --now docker.socket
-      sudo systemctl enable --now docker.service
-      
-      mkdir -p /usr/local/applications/ && cd /usr/local/applications/
-      git clone https://github.com/langgenius/dify.git
-      cp dify/docker/.env.example dify/docker/.env
-      cd dify/docker
-      
-      sudo chown -R 1001:1001 ./volumes/app/storage
-      sudo chmod -R u+rwX ./volumes/app/storage
-      
-      docker compose up -d
-      sleep 300
-      
-      CONTAINER_ID=$(docker ps --filter "name=ollama" --format "{{.ID}}")
-      docker exec -i "$CONTAINER_ID" /bin/bash -c "
-        ollama pull deepseek-r1:1.5b;
-        ollama pull llama3.2:1b;
-        ollama pull llama3.2:3b;
-        ollama pull nomic-embed-text:latest;
-        exit;
-      "
-      
-      # 安装云监控Agent
-      ARGUS_VERSION=3.5.7 /bin/bash -c "$(curl -sS https://cms-agent-ap-southeast-1.oss-ap-southeast-1-internal.aliyuncs.com/Argus/agent_install_ecs-1.7.sh)" 2>&1
-      
-      ###################################################
-      #  1. 清理制作镜像过程中产生的日志，避免敏感信息泄漏。    #
-      #    - 系统日志                                    #
-      #    - 应用日志                                    #
-      #  2. 清理制作镜像过程中命令行历史                    #
-      #  3. 删除所有账户默认密码，删除所有用户目录下的ssh配置  #
-      #  4. 清理缓存                                     #
-      ###################################################
-      
-      function disable_services(){
-        # 关闭基础镜像非必要服务，降低基础服务资源占用
-        # 关闭防火墙
-        systemctl disable firewalld
-        systemctl stop firewalld
-        # 关闭update-motd 服务
-        systemctl disable update-motd.service
-        systemctl stop update-motd.service
-        systemctl stop systemd-resolved.service
-        systemctl disable systemd-resolved.service
-        systemctl stop rpcbind.socket
-        systemctl stop rpcbind.service
-        systemctl disable rpcbind.service
-        systemctl disable rpcbind.socket
-      }
-      
-      function clean_log(){
-          #rm -fv /usr/local/aegis/aegis_update/data/data.[0-9]
-          #rm -fv /usr/local/aegis/aegis_client/aegis_*/data/data.[0-9]
-      
-          #rm -fv /usr/local/aegis/globalcfg/domaincfg.ini
-          #rm -fv /opt/aegis/globalcfg/domaincfg.ini
-      
-          rm -rf /var/log/anaconda/*
-          rm -rf /var/log/ecsgo.log*
-          rm -rf /var/log/cron-*
-          rm -rf /var/log/btmp-*
-          rm -rf /var/log/maillog-*
-          rm -rf /var/log/messages-*
-          rm -rf /var/log/secure-*
-          rm -rf /var/log/spooler-*
-          rm -rf /var/log/yum.log-*
-          rm -rf /var/log/boot.log-*
-          rm -rf /var/log/anaconda/*
-          rm -rf /var/log/sa/*
-          rm -rf /var/log/conman*
-          rm -rf /var/log/journal/*
-          rm -rf /var/log/cloud-init.log
-          rm -rf /var/log/cloud-init-output.log
-      
-          for i in $(find /var/log/ -type f); do > $i; done
-      
-          rm -rfv /var/lib/apt/lists/*
-          rm -rfv /var/lib/yum/history/*
-          rm -rfv /var/lib/dnf/history*
-          rm -rfv /var/lib/dhclient/*
-          rm -rfv /var/lib/dhcp/*
-          rm -rfv /var/lib/aliyun_init/*
-          rm -rfv /var/lib/cloud/*
-      
-          if [ -d /usr/local/share/aliyun-assist/*/log/ ];then
-              rm -rfv  /usr/local/share/aliyun-assist/*/log/*
-          fi
-      
-          rm -rfv /etc/ssh/sshd_config.d/*
-      
-          rm -rf /tmp/*
-          rm -f /root/{.bash_history,.viminfo,*.cfg,*.log*}
-          rm -rf /root/script
-      
-          sed -i "/iZ*Z/d" /etc/hosts
-          sed -i "/AliYun/d" /etc/hosts
-          sed -i "/Aliyun/d" /etc/hosts
-          sed -i "/debug/d" /etc/hosts
-      
-          # Clean up useless nameservers to prevent cloudinit local domain name resolution timeout
-          # sed -i "/nameserver/d" $(realpath /etc/resolv.conf)
-      
-          # [ -d /etc/NetworkManager/system-connections ] && rm -fv /etc/NetworkManager/system-connections/*.nmconnection
-      
-          # if [[ ! -L /etc/udev/rules.d/70-persistent-net.rules ]];then
-          #    rm -rfv /etc/udev/rules.d/70-persistent-net.rules
-          # fi
-      
-          sync
-          sync
-          sync
-      }
-      
-      function clean_source_cache(){
-          if [ `which zypper` ]; then
-              zypper clean; rm -fv /etc/zypp/repos.d/CUSTOM*
-          elif [ `which apt-get` ]; then
-              apt-get -q clean; apt-get -q autoclean; apt-get -q -y autoremove;
-          elif [ `which yum` ]; then
-              yum clean all;
-          elif [ `which dnf` ]; then
-              dnf clean all;
-          elif [ `which pkg` ]; then
-              pkg autoremove
-          fi
-      }
-      
-      function reset_sshd_cfg() {
-          sed -i '/PasswordAuthentication/d' /etc/ssh/sshd_config
-          echo 'PasswordAuthentication no' >> /etc/ssh/sshd_config
-          rm -f /etc/ssh/ssh_host_*
-      }
-      
-      function clean_user_auth(){
-          passwd -l root
-          sed -i -e 's/root:[^:]*:/root:*:/g' /etc/shadow
-          rm -f /root/.ssh/*
-      }
-      
-      function clean_cmd_history(){
-          for user in $(cut -f1 -d: /etc/passwd); do
-              if [ -f /home/$user/.bash_history ]; then
-                  > /home/$user/.bash_history
-              fi
-          done
-          > /root/.bash_history
-      }
-      
-      disable_services
-      clean_source_cache
-      clean_log
-      reset_sshd_cfg
-      clean_user_auth
-      clean_cmd_history
-
-      # 清理残留SSH
-      rm -f /root/.ssh/*
-      
-      # 卸载ssh-guard相关组件
-      if command -v yum &> /dev/null; then
-          yum remove -y t-aliyun-security-sshguard t-aliyun-security-daemon t-aliyun-security-logtailer
-      elif command -v apt-get &> /dev/null; then
-          apt-get remove -y t-aliyun-security-sshguard t-aliyun-security-daemon t-aliyun-security-logtailer
-          apt-get autoremove -y
-      else
-          echo "未找到支持的包管理器"
-          exit 1
-      fi
-      
-      rm -rf /opt/aliyun-security /usr/local/bin/sshguardctl /usr/local/bin/cloud-scra /run/aliyun-security--da
-      
-      sed -i '\#/usr/local/bin/sshguardctl#d' /etc/pam.d/sshd /etc/pam.d/common-auth
-      
-      # 清理账号密码
-      # 1.清空root、admin账号密码：
-      echo '1.开始清理root和admin账号密码...'
-      sed -i 's/\(^root:\)[^:]*/\1!!/' /etc/shadow
-      sed -i 's/\(^admin:\)[^:]*/\1!!/' /etc/shadow
-      echo '1.root和admin账号密码清理完毕！'
-      
-      
-      echo '2.开始清理其他账号(排除root和admin)...'
-      # 定义排除的用户名列表
-      exclude_users=("root" "admin")
-      
-      while IFS=: read -r username _ _ _ _ homedir user_shell; do
-        # 检查 shell 类型是否符合给定的列表
-        case $user_shell in
-          '/bin/bash'|'/bin/sh'|'/bin/zsh'\
-          |'/usr/bin/bash'|'/usr/bin/sh'|'/usr/bin/zsh'\
-          |'/usr/local/bin/bash'|'/usr/local/bin/sh'|'/usr/local/bin/zsh')
-            
-            # 检查用户名是否在排除列表中
-            if [[ ! " ${exclude_users[@]} " =~ " $username " ]]; then
-              
-              # 读取用户对应的密码信息
-              pass=$(grep "^$username:" /etc/shadow | cut -d: -f2)
-              
-              # 进行密码状态的检查
-              if [[ "$pass" == "!" || "$pass" == "!!" || "$pass" == *\!* || "$pass" == "*" ]]; then
-                echo "账号 $username 的密码被锁定或禁用，将不进行删除操作。"
-                continue
-              fi
-              
-              # 符合条件的账号，进行清理操作
-              echo '开始清理账号:' $username
-              userdel -r "$username" 2>/dev/null
-              if [[ -d "$homedir" ]]; then
-                rm -rf "$homedir" 2>/dev/null
-              fi
-            fi
-            ;;
-      
-          # 如果 user_shell 不符合列表中的任何一个，此用户将被忽略
-          *)
-            continue
-            ;;
-        esac
-      done < /etc/passwd
-      echo '2.其他账号(排除root和admin)清理完毕！'
-      
-      echo '3.开始清理home目录下以.DEL结尾的目录...'
-      # 从 /etc/passwd 读取并过滤出使用指定列表中的shell的用户数据
-      while IFS=: read -r username _ _ _ _ homedir user_shell; do
-        case $user_shell in
-          '/bin/bash'|'/bin/sh'|'/bin/zsh'\
-          |'/usr/bin/bash'|'/usr/bin/sh'|'/usr/bin/zsh'\
-          |'/usr/local/bin/bash'|'/usr/local/bin/sh'|'/usr/local/bin/zsh')
-            # 若home目录存在，则查找以 .DEL 结尾的目录并删除它们
-            if [[ -d "$homedir" ]]; then
-              find "$homedir" -maxdepth 1 -type d -name '*.DEL' -exec rm -rf {} \;
-            fi
-            ;;
-        esac
-      done < /etc/passwd
-      echo '3.清理home目录下以.DEL结尾的目录完毕！'
-      
-      # 验证步骤
-      echo '4.开始验证清理操作是否生效...'
-      
-      # 验证root和admin密码是否被清空
-      root_pass=$(grep "^root:" /etc/shadow | cut -d: -f2)
-      admin_pass=$(grep "^admin:" /etc/shadow | cut -d: -f2)
-      if [[ "$root_pass" == "!!" || -z "$admin_pass" ]]; then
-        echo '验证：root账号密码清理生效。'
-      else
-        echo '验证：root账号密码清理失败。'
-      fi
-      if [[ "$admin_pass" == "!!" || -z "$admin_pass" ]]; then
-        echo '验证：admin账号密码清理生效。'
-      else
-        echo '验证：admin账号密码清理失败。'
-      fi
-      
-      # 验证其他账号是否被清理
-      user_exists=0
-      while IFS=: read -r username _ _ _ _ homedir user_shell; do
-        # 检查 shell 类型是否符合给定的列表
-        case $user_shell in
-          '/bin/bash'|'/bin/sh'|'/bin/zsh'\
-          |'/usr/bin/bash'|'/usr/bin/sh'|'/usr/bin/zsh'\
-          |'/usr/local/bin/bash'|'/usr/local/bin/sh'|'/usr/local/bin/zsh')
-          
-            if [[ ! " ${exclude_users[@]} " =~ " $username " ]]; then
-              echo "验证失败：用户 $username 仍然存在。"
-              user_exists=1
-            fi
-            ;;
-        esac
-      done < /etc/passwd
-      
-      if [[ $user_exists -eq 0 ]]; then
-        echo '验证：其他账号清理生效。'
-      fi
-      
-      # 检查home目录中是否存在以.DEL结尾的目录
-      del_dir_exists=0
-      while IFS=: read -r username _ _ _ _ homedir user_shell; do
-        if [[ -d "$homedir" && -n $(find "$homedir" -maxdepth 1 -type d -name '*.DEL') ]]; then
-          echo "验证失败：目录 $homedir 下仍然存在.DEL结尾的目录。"
-          del_dir_exists=1
-        fi
-      done < /etc/passwd
-      
-      if [[ $del_dir_exists -eq 0 ]]; then
-        echo '验证：home目录下以.DEL结尾的目录清理生效。'
-      fi
-      
-      echo '验证步骤完成！'
-      rm -- "$0"
-       
+    CommandContent: "\n#!/bin/bash\n# 升级基础组件：\nyum check-update\nyum -y upgrade --security\n\
+      yum -y upgrade-minimal\n\n# 安装docker-ce\nyum-config-manager --add-repo http://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo\n\
+      yum makecache\nyum install -y curl git docker-ce\nmkdir -p /etc/docker/\necho\
+      \ '{\n    \"default-address-pools\": [\n        {\n            \"base\": \"\
+      10.255.0.0/16\",\n            \"size\": 24\n        }\n    ]\n}' > /etc/docker/daemon.json\n\
+      \nprefixChinaRegion=\"cn-\"\nregion=$(curl -s http://100.100.100.200/latest/meta-data/region-id)\n\
+      \nif [[ ${region} == ${prefixChinaRegion}* && ${region} != \"cn-hongkong\" ]];\
+      \ then\n  echo '{\n      \"default-address-pools\": [\n          {\n       \
+      \       \"base\": \"10.255.0.0/16\",\n              \"size\": 24\n         \
+      \ }\n      ],\n      \"registry-mirrors\": [\n          \"https://mirrors-ssl.aliyuncs.com/\"\
+      \n      ]\n  }' > /etc/docker/daemon.json\nfi\n\nsudo systemctl enable --now\
+      \ docker.socket\nsudo systemctl enable --now docker.service\n\nmkdir -p /usr/local/applications/\
+      \ && cd /usr/local/applications/\ngit clone https://github.com/langgenius/dify.git\n\
+      cp dify/docker/.env.example dify/docker/.env\ncd dify/docker\n\nsudo chown -R\
+      \ 1001:1001 ./volumes/app/storage\nsudo chmod -R u+rwX ./volumes/app/storage\n\
+      \ndocker compose up -d\nsleep 300\n\nCONTAINER_ID=$(docker ps --filter \"name=ollama\"\
+      \ --format \"{{.ID}}\")\ndocker exec -i \"$CONTAINER_ID\" /bin/bash -c \"\n\
+      \  ollama pull deepseek-r1:1.5b;\n  ollama pull llama3.2:1b;\n  ollama pull\
+      \ llama3.2:3b;\n  ollama pull nomic-embed-text:latest;\n  exit;\n\"\n\n# 安装云监控Agent\n\
+      ARGUS_VERSION=3.5.7 /bin/bash -c \"$(curl -sS https://cms-agent-ap-southeast-1.oss-ap-southeast-1-internal.aliyuncs.com/Argus/agent_install_ecs-1.7.sh)\"\
+      \ 2>&1\n\n###################################################\n#  1. 清理制作镜像过程中产生的日志，避免敏感信息泄漏。\
+      \    #\n#    - 系统日志                                    #\n#    - 应用日志      \
+      \                              #\n#  2. 清理制作镜像过程中命令行历史                    #\n\
+      #  3. 删除所有账户默认密码，删除所有用户目录下的ssh配置  #\n#  4. 清理缓存                            \
+      \         #\n###################################################\n\nfunction\
+      \ disable_services(){\n  # 关闭基础镜像非必要服务，降低基础服务资源占用\n  # 关闭防火墙\n  systemctl disable\
+      \ firewalld\n  systemctl stop firewalld\n  # 关闭update-motd 服务\n  systemctl disable\
+      \ update-motd.service\n  systemctl stop update-motd.service\n  systemctl stop\
+      \ systemd-resolved.service\n  systemctl disable systemd-resolved.service\n \
+      \ systemctl stop rpcbind.socket\n  systemctl stop rpcbind.service\n  systemctl\
+      \ disable rpcbind.service\n  systemctl disable rpcbind.socket\n}\n\nfunction\
+      \ clean_log(){\n    #rm -fv /usr/local/aegis/aegis_update/data/data.[0-9]\n\
+      \    #rm -fv /usr/local/aegis/aegis_client/aegis_*/data/data.[0-9]\n\n    #rm\
+      \ -fv /usr/local/aegis/globalcfg/domaincfg.ini\n    #rm -fv /opt/aegis/globalcfg/domaincfg.ini\n\
+      \n    rm -rf /var/log/anaconda/*\n    rm -rf /var/log/ecsgo.log*\n    rm -rf\
+      \ /var/log/cron-*\n    rm -rf /var/log/btmp-*\n    rm -rf /var/log/maillog-*\n\
+      \    rm -rf /var/log/messages-*\n    rm -rf /var/log/secure-*\n    rm -rf /var/log/spooler-*\n\
+      \    rm -rf /var/log/yum.log-*\n    rm -rf /var/log/boot.log-*\n    rm -rf /var/log/anaconda/*\n\
+      \    rm -rf /var/log/sa/*\n    rm -rf /var/log/conman*\n    rm -rf /var/log/journal/*\n\
+      \    rm -rf /var/log/cloud-init.log\n    rm -rf /var/log/cloud-init-output.log\n\
+      \n    for i in $(find /var/log/ -type f); do > $i; done\n\n    rm -rfv /var/lib/apt/lists/*\n\
+      \    rm -rfv /var/lib/yum/history/*\n    rm -rfv /var/lib/dnf/history*\n   \
+      \ rm -rfv /var/lib/dhclient/*\n    rm -rfv /var/lib/dhcp/*\n    rm -rfv /var/lib/aliyun_init/*\n\
+      \    rm -rfv /var/lib/cloud/*\n\n    if [ -d /usr/local/share/aliyun-assist/*/log/\
+      \ ];then\n        rm -rfv  /usr/local/share/aliyun-assist/*/log/*\n    fi\n\n\
+      \    rm -rfv /etc/ssh/sshd_config.d/*\n\n    rm -rf /tmp/*\n    rm -f /root/{.bash_history,.viminfo,*.cfg,*.log*}\n\
+      \    rm -rf /root/script\n\n    sed -i \"/iZ*Z/d\" /etc/hosts\n    sed -i \"\
+      /AliYun/d\" /etc/hosts\n    sed -i \"/Aliyun/d\" /etc/hosts\n    sed -i \"/debug/d\"\
+      \ /etc/hosts\n\n    # Clean up useless nameservers to prevent cloudinit local\
+      \ domain name resolution timeout\n    # sed -i \"/nameserver/d\" $(realpath\
+      \ /etc/resolv.conf)\n\n    # [ -d /etc/NetworkManager/system-connections ] &&\
+      \ rm -fv /etc/NetworkManager/system-connections/*.nmconnection\n\n    # if [[\
+      \ ! -L /etc/udev/rules.d/70-persistent-net.rules ]];then\n    #    rm -rfv /etc/udev/rules.d/70-persistent-net.rules\n\
+      \    # fi\n\n    sync\n    sync\n    sync\n}\n\nfunction clean_source_cache(){\n\
+      \    if [ `which zypper` ]; then\n        zypper clean; rm -fv /etc/zypp/repos.d/CUSTOM*\n\
+      \    elif [ `which apt-get` ]; then\n        apt-get -q clean; apt-get -q autoclean;\
+      \ apt-get -q -y autoremove;\n    elif [ `which yum` ]; then\n        yum clean\
+      \ all;\n    elif [ `which dnf` ]; then\n        dnf clean all;\n    elif [ `which\
+      \ pkg` ]; then\n        pkg autoremove\n    fi\n}\n\nfunction reset_sshd_cfg()\
+      \ {\n    sed -i '/PasswordAuthentication/d' /etc/ssh/sshd_config\n    echo 'PasswordAuthentication\
+      \ no' >> /etc/ssh/sshd_config\n    rm -f /etc/ssh/ssh_host_*\n}\n\nfunction\
+      \ clean_user_auth(){\n    passwd -l root\n    sed -i -e 's/root:[^:]*:/root:*:/g'\
+      \ /etc/shadow\n    rm -f /root/.ssh/*\n}\n\nfunction clean_cmd_history(){\n\
+      \    for user in $(cut -f1 -d: /etc/passwd); do\n        if [ -f /home/$user/.bash_history\
+      \ ]; then\n            > /home/$user/.bash_history\n        fi\n    done\n \
+      \   > /root/.bash_history\n}\n\ndisable_services\nclean_source_cache\nclean_log\n\
+      reset_sshd_cfg\nclean_user_auth\nclean_cmd_history\n\n# 清理残留SSH\nrm -f /root/.ssh/*\n\
+      \n# 卸载ssh-guard相关组件\nif command -v yum &> /dev/null; then\n    yum remove -y\
+      \ t-aliyun-security-sshguard t-aliyun-security-daemon t-aliyun-security-logtailer\n\
+      elif command -v apt-get &> /dev/null; then\n    apt-get remove -y t-aliyun-security-sshguard\
+      \ t-aliyun-security-daemon t-aliyun-security-logtailer\n    apt-get autoremove\
+      \ -y\nelse\n    echo \"未找到支持的包管理器\"\n    exit 1\nfi\n\nrm -rf /opt/aliyun-security\
+      \ /usr/local/bin/sshguardctl /usr/local/bin/cloud-scra /run/aliyun-security--da\n\
+      \nsed -i '\\#/usr/local/bin/sshguardctl#d' /etc/pam.d/sshd /etc/pam.d/common-auth\n\
+      \n# 清理账号密码\n# 1.清空root、admin账号密码：\necho '1.开始清理root和admin账号密码...'\nsed -i 's/\\\
+      (^root:\\)[^:]*/\\1!!/' /etc/shadow\nsed -i 's/\\(^admin:\\)[^:]*/\\1!!/' /etc/shadow\n\
+      echo '1.root和admin账号密码清理完毕！'\n\n\necho '2.开始清理其他账号(排除root和admin)...'\n# 定义排除的用户名列表\n\
+      exclude_users=(\"root\" \"admin\")\n\nwhile IFS=: read -r username _ _ _ _ homedir\
+      \ user_shell; do\n  # 检查 shell 类型是否符合给定的列表\n  case $user_shell in\n    '/bin/bash'|'/bin/sh'|'/bin/zsh'\\\
+      \n    |'/usr/bin/bash'|'/usr/bin/sh'|'/usr/bin/zsh'\\\n    |'/usr/local/bin/bash'|'/usr/local/bin/sh'|'/usr/local/bin/zsh')\n\
+      \      \n      # 检查用户名是否在排除列表中\n      if [[ ! \" ${exclude_users[@]} \" =~ \"\
+      \ $username \" ]]; then\n        \n        # 读取用户对应的密码信息\n        pass=$(grep\
+      \ \"^$username:\" /etc/shadow | cut -d: -f2)\n        \n        # 进行密码状态的检查\n\
+      \        if [[ \"$pass\" == \"!\" || \"$pass\" == \"!!\" || \"$pass\" == *\\\
+      !* || \"$pass\" == \"*\" ]]; then\n          echo \"账号 $username 的密码被锁定或禁用，将不进行删除操作。\"\
+      \n          continue\n        fi\n        \n        # 符合条件的账号，进行清理操作\n     \
+      \   echo '开始清理账号:' $username\n        userdel -r \"$username\" 2>/dev/null\n\
+      \        if [[ -d \"$homedir\" ]]; then\n          rm -rf \"$homedir\" 2>/dev/null\n\
+      \        fi\n      fi\n      ;;\n\n    # 如果 user_shell 不符合列表中的任何一个，此用户将被忽略\n\
+      \    *)\n      continue\n      ;;\n  esac\ndone < /etc/passwd\necho '2.其他账号(排除root和admin)清理完毕！'\n\
+      \necho '3.开始清理home目录下以.DEL结尾的目录...'\n# 从 /etc/passwd 读取并过滤出使用指定列表中的shell的用户数据\n\
+      while IFS=: read -r username _ _ _ _ homedir user_shell; do\n  case $user_shell\
+      \ in\n    '/bin/bash'|'/bin/sh'|'/bin/zsh'\\\n    |'/usr/bin/bash'|'/usr/bin/sh'|'/usr/bin/zsh'\\\
+      \n    |'/usr/local/bin/bash'|'/usr/local/bin/sh'|'/usr/local/bin/zsh')\n   \
+      \   # 若home目录存在，则查找以 .DEL 结尾的目录并删除它们\n      if [[ -d \"$homedir\" ]]; then\n\
+      \        find \"$homedir\" -maxdepth 1 -type d -name '*.DEL' -exec rm -rf {}\
+      \ \\;\n      fi\n      ;;\n  esac\ndone < /etc/passwd\necho '3.清理home目录下以.DEL结尾的目录完毕！'\n\
+      \n# 验证步骤\necho '4.开始验证清理操作是否生效...'\n\n# 验证root和admin密码是否被清空\nroot_pass=$(grep\
+      \ \"^root:\" /etc/shadow | cut -d: -f2)\nadmin_pass=$(grep \"^admin:\" /etc/shadow\
+      \ | cut -d: -f2)\nif [[ \"$root_pass\" == \"!!\" || -z \"$admin_pass\" ]]; then\n\
+      \  echo '验证：root账号密码清理生效。'\nelse\n  echo '验证：root账号密码清理失败。'\nfi\nif [[ \"$admin_pass\"\
+      \ == \"!!\" || -z \"$admin_pass\" ]]; then\n  echo '验证：admin账号密码清理生效。'\nelse\n\
+      \  echo '验证：admin账号密码清理失败。'\nfi\n\n# 验证其他账号是否被清理\nuser_exists=0\nwhile IFS=:\
+      \ read -r username _ _ _ _ homedir user_shell; do\n  # 检查 shell 类型是否符合给定的列表\n\
+      \  case $user_shell in\n    '/bin/bash'|'/bin/sh'|'/bin/zsh'\\\n    |'/usr/bin/bash'|'/usr/bin/sh'|'/usr/bin/zsh'\\\
+      \n    |'/usr/local/bin/bash'|'/usr/local/bin/sh'|'/usr/local/bin/zsh')\n   \
+      \ \n      if [[ ! \" ${exclude_users[@]} \" =~ \" $username \" ]]; then\n  \
+      \      echo \"验证失败：用户 $username 仍然存在。\"\n        user_exists=1\n      fi\n \
+      \     ;;\n  esac\ndone < /etc/passwd\n\nif [[ $user_exists -eq 0 ]]; then\n\
+      \  echo '验证：其他账号清理生效。'\nfi\n\n# 检查home目录中是否存在以.DEL结尾的目录\ndel_dir_exists=0\n\
+      while IFS=: read -r username _ _ _ _ homedir user_shell; do\n  if [[ -d \"$homedir\"\
+      \ && -n $(find \"$homedir\" -maxdepth 1 -type d -name '*.DEL') ]]; then\n  \
+      \  echo \"验证失败：目录 $homedir 下仍然存在.DEL结尾的目录。\"\n    del_dir_exists=1\n  fi\ndone\
+      \ < /etc/passwd\n\nif [[ $del_dir_exists -eq 0 ]]; then\n  echo '验证：home目录下以.DEL结尾的目录清理生效。'\n\
+      fi\n\necho '验证步骤完成！'\nrm -- \"$0\"\n "
