@@ -5,13 +5,20 @@ Service:
     ServiceInstanceNameRule:
       Prefix: dify
     SupplierDeployMetadata:
+      SupplierTemplateConfigs:
+        - Name: 单机版
+          Url: ros_templates/template.yaml
+          AllowedRegions:
+            - ap-southeast-1
       ArtifactRelation:
-        centos_7_9_x64_20G_alibase_20240403.vhd:
+        dify:
           ArtifactId: ${Artifact.EcsImage.ArtifactId}
-          ArtifactVersion: ${Artifact.EcsImage.ArtifactVersion}
+          ArtifactVersion: draft
     TemplateConfigs:
-    - Name: 单机版
-      Url: ros_templates/template.yaml
+      - Name: 单机版
+        Url: ros_templates/template.yaml
+        AllowedRegions:
+          - ap-southeast-1
   ServiceType: private
   ServiceInfo:
     Locale: zh-CN
