@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="计算巢是阿里云开放给企业应用服务商的服务管理平台。服务商能够在计算巢上发布私有化部署服务，为其客户提供云上软件一键部署的能力；同时也支持全托管模式的服务，赋能服务商托管其客户资源。">
+  <title>Dify计算巢快速部署 - Aliyun 计算巢 x Demo</title>
+
+  <link rel="shortcut icon" href="../img/favicon.ico">
+
+  <link rel="stylesheet" href="https://unpkg.com/purecss@1.0.0/build/pure-min.css">
+  <link rel="stylesheet" href="../css/theme.css">
+  
+
+  
+
+  
+  
+
+  
+    <script src="../search/main.js"></script>
+  
+
+  
+
+  <script src="../js/highlight.min.js"></script>
+  <script>hljs.highlightAll();</script>
+</head>
+
+<body>
+  <div class="container">
+    <div class="nav">
+      <div class="nav-inner">
+        <div class="logo">
+          <img src="./img/logo-2x.png">
+        </div>
+        <div class="nav-list">
+          <ul>
+          
+              <li><a href="#dify">Dify计算巢快速部署</a></li>
+              
+                  <li><a href="#_1">概述</a></li>
+                  
+              
+                  <li><a href="#_2">前提条件</a></li>
+                  
+              
+                  <li><a href="#_3">计费说明</a></li>
+                  
+              
+                  <li><a href="#_4">部署架构</a></li>
+                  
+              
+                  <li><a href="#_5">部署流程</a></li>
+                  
+              
+                  <li><a href="#_6">使用说明</a></li>
+                  
+              
+                  <li><a href="#nacos-mcp-server">基于 Nacos 实现 MCP Server 集中管理</a></li>
+                  
+              
+                  <li><a href="#_7">常见问题</a></li>
+                  
+              
+          
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="content theme-github">
+      
+      <div class="content-inner">        
+        
+        <h1 id="dify">Dify计算巢快速部署</h1>
+<blockquote>
+<p><strong>免责声明：</strong>本服务由第三方提供，我们尽力确保其安全性、准确性和可靠性，但无法保证其完全免于故障、中断、错误或攻击。因此，本公司在此声明：对于本服务的内容、准确性、完整性、可靠性、适用性以及及时性不作任何陈述、保证或承诺，不对您使用本服务所产生的任何直接或间接的损失或损害承担任何责任；对于您通过本服务访问的第三方网站、应用程序、产品和服务，不对其内容、准确性、完整性、可靠性、适用性以及及时性承担任何责任，您应自行承担使用后果产生的风险和责任；对于因您使用本服务而产生的任何损失、损害，包括但不限于直接损失、间接损失、利润损失、商誉损失、数据损失或其他经济损失，不承担任何责任，即使本公司事先已被告知可能存在此类损失或损害的可能性；我们保留不时修改本声明的权利，因此请您在使用本服务前定期检查本声明。如果您对本声明或本服务存在任何问题或疑问，请联系我们。</p>
+</blockquote>
+<h2 id="_1">概述</h2>
+<p>Dify.AI 是一款 LLMOps 平台，帮助开发者更简单、更快速地构建 AI 应用。它的核心理念是通过可声明式的 YAML 文件定义 AI 应用的各个方面，包括 Prompt、上下文和插件等。Dify 提供了可视化的 Prompt 编排、运营、数据集管理等功能。这些功能使得开发者能够在数天内完成 AI 应用的开发，或将 LLM 快速集成到现有应用中，并进行持续运营和改进，创造一个真正有价值的 AI 应用。
+本方案提供了部署Dify的最佳实践，基于阿里云ACK部署的Dify支持高可用、弹性伸缩等能力，且同时支持集成云数据库, 可以实现Dify稳定、高性能部署，推荐用于生产环境。</p>
+<h2 id="_2">前提条件</h2>
+<p>部署Dify社区版服务实例，需要对部分阿里云资源进行访问和创建操作。因此您的账号需要包含如下资源的权限。
+  <strong>说明</strong>：当您的账号是RAM账号时，才需要添加此权限。</p>
+<table>
+<thead>
+<tr>
+<th>权限策略名称</th>
+<th>备注</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>AliyunECSFullAccess</td>
+<td>管理云服务器服务（ECS）的权限</td>
+</tr>
+<tr>
+<td>AliyunVPCFullAccess</td>
+<td>管理专有网络（VPC）的权限</td>
+</tr>
+<tr>
+<td>AliyunROSFullAccess</td>
+<td>管理资源编排服务（ROS）的权限</td>
+</tr>
+<tr>
+<td>AliyunCSFullAccess</td>
+<td>管理容器服务（CS）的权限</td>
+</tr>
+<tr>
+<td>AliyunROSFullAccess</td>
+<td>管理资源编排服务（ROS）的权限</td>
+</tr>
+<tr>
+<td>AliyunKvstoreFullAccess</td>
+<td>管理云数据库Tair（兼容 Redis）的权限</td>
+</tr>
+<tr>
+<td>AliyunRDSFullAccess</td>
+<td>管理云数据库服务（RDS）的权限</td>
+</tr>
+<tr>
+<td>AliyunOTSFullAccess</td>
+<td>管理 TableStore 的权限</td>
+</tr>
+<tr>
+<td>AliyunComputeNestUserFullAccess</td>
+<td>管理计算巢服务（ComputeNest）的用户侧权限</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_3">计费说明</h2>
+<p>Dify社区版在计算巢部署的费用主要涉及：</p>
+<ul>
+<li>所选vCPU与内存规格</li>
+<li>系统盘类型及容量</li>
+<li>公网带宽</li>
+<li>所选的云数据库的规格</li>
+<li>OSS 持久化存储的费用</li>
+</ul>
+<h2 id="_4">部署架构</h2>
+<p><img src="22.jpg" width="1500" height="700" align="bottom"/></p>
+<p>Dify应用的组件主要包括业务组件和基础组件两大类，业务组件包括：api/worker、web、sandbox。基础组件包括：db、verctor db、redis、nginx、ssrf_proxy。
+此方案的基础组件选择阿里云的云数据库，在性能、功能和SLA上都有更好的表现，更适合生产环境使用。</p>
+<h2 id="_5">部署流程</h2>
+<ol>
+<li>访问计算巢Dify社区版<a href="https://computenest.console.aliyun.com/user/cn-hangzhou/serviceInstanceCreate?ServiceId=service-c8afb895dd314f70a020">部署链接</a>按提示填写部署参数： 
+ 模板选择"高可用版"，配置Kubernetes，需要配置节点规格、节点密码等。
+    <img alt="image.png" src="../10.png" />
+配置Postgres数据库，需要进行相关配置
+  <img alt="image.png" src="../11.png" />
+配置Reids数据库，需要进行相关配置
+  <img alt="image.png" src="../12.png" />
+配置TablesStore，保持默认值即可
+配置网络参数，可以选择新建专有网络, 也可以选择已有专有网络，选择两个可用区，提高服务可用性。
+  <img alt="image.png" src="../14.png" />
+进行服务相关配置，如果您有可用的域名，可填写您自己的域名，否则默认使用计算巢提供的测试域名，测试域名需要绑定host后使用，否则无法访问。
+  如果需要开启TLS配置，需要上传TLS证书
+  建议开启高可用配置，开启后可以提高应用的容灾能力和对峰值负载的处理能力。</li>
+<li>参数填写完成后可以看到对应询价明细，确认参数后点击<strong>下一步：确认订单</strong>。 确认订单完成后同意服务协议并点击<strong>立即创建</strong>
+   进入部署阶段。
+    <img alt="image.png" src="../16.png" /></li>
+<li>等待部署完成后就可以开始使用服务，进入服务实例详情可查看使用说明和Dify访问页面，若使用域名，需要按照使用说明的提示绑定host或配置解析后使用
+    <img alt="image.png" src="../17.png" /></li>
+<li>注册账号。
+    <img alt="image.png" src="../6.png" /></li>
+<li>登录就能创建自己的dify应用了
+    <img alt="image.png" src="../7.png" /></li>
+</ol>
+<h2 id="_6">使用说明</h2>
+<p>### 配置Dify 服务的弹性伸缩
+   如果希望实现弹性扩缩容，
+   节点的弹性扩缩容可以参考此文档进行<a href="https://help.aliyun.com/zh/ack/ack-managed-and-ack-dedicated/user-guide/auto-scaling-of-nodes?spm=a2c4g.11186623.help-menu-85222.d_2_12_1_0.9ae546c6P5Pf9i">配置</a>。
+   负载的弹性伸缩可以打开部署页面的“高可用”开关</p>
+<h2 id="nacos-mcp-server">基于 Nacos 实现 MCP Server 集中管理</h2>
+<p>Dify自1.6.0版本后官方支持了MCP Server, 对接 Nacos MCP Registry 可以实现 MCP Server 集中管理。
+Nacos 3.0 版本实现了 MCP Registry 管理功能，可以对所有的MCP Server 进行集中式的管理。Dify 应用通过接入 Nacos MCP 插件，基于 Nacos MCP Registry，可以实现以下功能：
+1. MCP Server 自动注册和动态发现: 支持多实例注册分布式部署，提高容灾能力。支持标准 MCP Server 注册，以及存量的微服务 API 0代码改动转化成 MCP 服务。
+2. MCP Server 运行时信息动态管理: 工具描述运行时动态修改生效，帮助 MCP Server 快速调优迭代。MCP Tools 动态开关，动态调整暴露工具列表。MCP Server 版本管理。
+3. MSE Nacos 支持 MCP Registry 管理功能，高可用，高性能， 高性能，具体接入和使用教程，请参考：<a href="https://help.aliyun.com/zh/mse/use-cases/dify-docking-with-nacos-mcp-registry-to-realize-centralized-management-of-mcp-server">Dify Nacos MCP 插件使用教程与最佳实践</a> .
+您也可以通过部署开源 Nacos 3.x 进行试用，接入文档：<a href="https://nacos.io/docs/latest/manual/user/ai/dify-nacos-mcp/?spm=5238cd80.2ef5001f.0.0.3f613b7cC9m8vz">开源接入文档</a></p>
+<h2 id="_7">常见问题</h2>
+<ol>
+<li>服务实例删除失败：如果服务实例删除时，会出现报错：DELETE_FAILED: The instance is not empty. ErrorCode: OTSValidationFail，原因是向量数据库Tablestore中有数据，Tablestore中的数据不支持自动删除，需要手动到<a href="https://otsnext.console.aliyun.com/cn-guangzhou/totalList">Tablestore控制台</a>, 找到对应的实例，删除所有的数据表。</li>
+</ol>
+        
+      </div>
+
+      <div class="copyrights">© 2009-2022 Aliyun.com 版权所有</div>
+    </div>
+  </div>
+  
+  <!--
+  MkDocs version      : 1.6.1
+  Docs Build Date UTC : 2026-02-25 08:30:32.342709+00:00
+  -->
+</body>
+</html>
