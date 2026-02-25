@@ -25,20 +25,17 @@ Artifact:
     ArtifactType: EcsImage
     ArtifactName: dify
     Description: dify
-    ArtifactProperty:
-      RegionId: ${ImageBuilder.EcsImage.RegionId}
-      ImageId: ${ImageBuilder.EcsImage.SourceImageId}
-ImageBuilder:
-  EcsImage:
-    RegionId: ap-southeast-1
-    SourceImageId: aliyun_3_x64_20G_alibase_20240819.vhd
-    SystemDiskSize: 20
-    InstanceType: ecs.c6.large
-    InternetMaxBandwidthOut: 10
-    CommandType: RunShellScript
-    Timeout: 10800
-    Tags: []
-    CommandContent: "\n#!/bin/bash\n# 升级基础组件：\nyum check-update\nyum -y upgrade --security\n\
+    SupportRegionIds:
+        - ap-southeast-1
+    ArtifactBuildProperty:
+      CodeRepo:
+        Platform: github
+        Owner: LYH-RAIN
+        RepoName: aliyun-computenest/quickstart-dify
+        Branch: main
+      RegionId: ap-southeast-1
+      CommandType: RunShellScript
+      CommandContent: "\n#!/bin/bash\n# 升级基础组件：\nyum check-update\nyum -y upgrade --security\n\
       yum -y upgrade-minimal\n\n# 安装docker-ce\nyum-config-manager --add-repo http://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo\n\
       yum makecache\nyum install -y curl git docker-ce\nmkdir -p /etc/docker/\necho
       '{\n    \"default-address-pools\": [\n        {\n            \"base\": \"10.255.0.0/16\"\
@@ -152,3 +149,4 @@ ImageBuilder:
       \  echo \"验证失败：目录 $homedir 下仍然存在.DEL结尾的目录。\"\n    del_dir_exists=1\n  fi\ndone
       < /etc/passwd\n\nif [[ $del_dir_exists -eq 0 ]]; then\n  echo '验证：home目录下以.DEL结尾的目录清理生效。'\n\
       fi\n\necho '验证步骤完成！'\nrm -- \"$0\"\n "
+    
