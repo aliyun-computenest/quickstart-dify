@@ -26,7 +26,7 @@ Service:
     Image: resources/icons/service_logo.png
     Softwares:
     - Name: dify
-      Version: v1.16.1-fix.1
+      Version: v1.17.0-fix.1
 Artifact:
   EcsImage:
     ArtifactType: EcsImage
